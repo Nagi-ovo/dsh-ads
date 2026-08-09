@@ -31,7 +31,7 @@ const BANNER_META = {
 
 /** Bottom-left takeover posters: the browser-game inventory, the heaviest slot. */
 const POSTER_META = {
-  'poster-blue-whale': { alt: '贪玩蓝鲸 是兄弟就来蹬我 一刀999级 装备全靠爆 上线送VIP15' },
+  'poster-blue-whale': { alt: '贪玩蓝鲸 是兄弟就来蹬我 一句999轮 显卡全靠爆 上线送VIP15 88888 Token' },
 }
 
 /** Corner pop-up artwork: the loud full-colour set, rotated in file order. */
@@ -52,16 +52,24 @@ const POPUP_META = {
  */
 async function collect(dir, meta, extra) {
   const abs = join(here, '..', 'assets', dir)
-  const files = (await readdir(abs)).filter((f) => f.endsWith('.webp')).sort()
+  const present = await readdir(abs)
+  const files = present.filter((f) => f.endsWith('.webp')).sort()
   const out = []
   for (const file of files) {
     const id = file.replace(/\.webp$/, '')
     const entry = meta[id]
     if (entry === undefined) throw new Error(`assets/${dir}/${file} has no metadata entry in scripts/build-assets.mjs`)
-    const geom = execFileSync('magick', ['identify', '-format', '%w %h', join(abs, file)], { encoding: 'utf8' })
+    // `[0]` pins the first frame: an animated webp otherwise reports one
+    // geometry line per frame, and the layout only wants the canvas size.
+    const geom = execFileSync('magick', ['identify', '-format', '%w %h', `${join(abs, file)}[0]`], { encoding: 'utf8' })
     const [width, height] = geom.trim().split(' ').map(Number)
     const b64 = (await readFile(join(abs, file))).toString('base64')
-    out.push({ id, width, height, ...extra, ...entry, src: `data:image/webp;base64,${b64}` })
+    const record = { id, width, height, ...extra, ...entry, src: `data:image/webp;base64,${b64}` }
+    // An `<id>.mp4` beside the still becomes the takeover's video.
+    if (present.includes(`${id}.mp4`)) {
+      record.video = `data:video/mp4;base64,${(await readFile(join(abs, `${id}.mp4`))).toString('base64')}`
+    }
+    out.push(record)
   }
   return out
 }

@@ -2,12 +2,16 @@
  * The "landing page": what a missed close button gets you.
  *
  * Missing the real hitbox blows the banner up to full screen behind a scrim,
- * exactly like a mistapped mobile ad. The joke has a floor — the skip control
- * becomes a normal, honestly-sized button after a short countdown, and Escape
- * always works — so a user who wants out is never actually trapped.
+ * exactly like a mistapped mobile ad. Creatives that carry a video play it
+ * here instead of enlarging the still — a game ad opening into a video ad is
+ * the whole shape of the thing.
+ *
+ * The joke has a floor — the skip control becomes a normal, honestly-sized
+ * button after a short countdown, and Escape always works — so a user who
+ * wants out is never actually trapped.
  */
 
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import type { AdCreative } from './types.ts'
 import { resolveHitbox, VISUAL_CLOSE_PX } from './hitbox.ts'
 
@@ -37,6 +41,15 @@ const scrimStyle: CSSProperties = {
   pointerEvents: 'auto',
 }
 
+/** Shared box for the enlarged still and the video, so both fill the scrim identically. */
+const mediaStyle: CSSProperties = {
+  display: 'block',
+  maxWidth: '92vw',
+  maxHeight: '70vh',
+  width: 'auto',
+  height: 'auto',
+}
+
 const skipStyle: CSSProperties = {
   padding: '6px 18px',
   borderRadius: 4,
@@ -55,9 +68,24 @@ const skipStyle: CSSProperties = {
  */
 export function Lightbox({ creative, seed, onClose }: LightboxProps) {
   const [left, setLeft] = useState(SKIP_AFTER_S)
+  const [muted, setMuted] = useState(true)
+  const videoRef = useRef<HTMLVideoElement | null>(null)
   useEffect(() => {
     const timer = setInterval(() => setLeft((n) => (n <= 1 ? 0 : n - 1)), 1000)
     return () => clearInterval(timer)
+  }, [])
+  // React sets `muted` as a DOM property but never as the HTML attribute, and
+  // the autoplay policy reads the attribute — so a JSX-only `muted autoPlay`
+  // video mounts paused. Setting it here, before asking to play, is what
+  // actually starts it.
+  useEffect(() => {
+    const video = videoRef.current
+    if (video === null) return
+    video.muted = true
+    void video.play().catch(() => {
+      // Swallowed: a refusal leaves the poster frame on screen, which is a
+      // fine still ad. Nothing else in the takeover depends on playback.
+    })
   }, [])
   // Escape is the unconditional exit: the countdown is a gag, not a trap.
   useEffect(() => {
@@ -73,12 +101,30 @@ export function Lightbox({ creative, seed, onClose }: LightboxProps) {
   return (
     <div style={scrimStyle}>
       <div style={{ position: 'relative', maxWidth: '92vw' }}>
-        <img
-          src={creative.src}
-          alt={creative.alt}
-          draggable={false}
-          style={{ display: 'block', maxWidth: '92vw', maxHeight: '70vh', width: 'auto', height: 'auto' }}
-        />
+        {creative.video === undefined
+          ? (
+            <img
+              src={creative.src}
+              alt={creative.alt}
+              draggable={false}
+              style={mediaStyle}
+            />
+          )
+          : (
+            // Muted autoplay is the only kind browsers reliably allow; the
+            // unmute control below hands the sound back on a real click.
+            <video
+              ref={videoRef}
+              src={creative.video}
+              poster={creative.src}
+              autoPlay
+              loop
+              muted
+              playsInline
+              aria-label={creative.alt}
+              style={mediaStyle}
+            />
+          )}
         <div
           aria-hidden="true"
           style={{
@@ -114,9 +160,30 @@ export function Lightbox({ creative, seed, onClose }: LightboxProps) {
           }}
         />
       </div>
-      {left > 0
-        ? <div style={{ ...skipStyle, opacity: 0.5, cursor: 'default' }}>{left} 秒后可跳过</div>
-        : <button type="button" style={skipStyle} onClick={onClose}>跳过广告</button>}
+      <div style={{ display: 'flex', gap: 10 }}>
+        {creative.video !== undefined && (
+          <button
+            type="button"
+            style={skipStyle}
+            onClick={() => {
+              const video = videoRef.current
+              if (video === null) return
+              video.muted = !muted
+              setMuted(!muted)
+              void video.play().catch(() => {
+                // Swallowed: a rejected play() here means the browser still
+                // refuses audible playback, which leaves the video exactly as
+                // it was. Nothing else in the takeover depends on it.
+              })
+            }}
+          >
+            {muted ? '🔇 点击有声播放' : '🔊 静音'}
+          </button>
+        )}
+        {left > 0
+          ? <div style={{ ...skipStyle, opacity: 0.5, cursor: 'default' }}>{left} 秒后可跳过</div>
+          : <button type="button" style={skipStyle} onClick={onClose}>跳过广告</button>}
+      </div>
     </div>
   )
 }

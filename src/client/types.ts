@@ -27,6 +27,12 @@ export interface AdCreative {
   readonly alt: string
   /** Image source; built-in banners carry a `data:` URI. */
   readonly src: string
+  /**
+   * Optional video source for the takeover. When present, clicking through to
+   * the landing page plays this instead of enlarging the still — a game ad
+   * that opens into a video is the whole point of a game ad.
+   */
+  readonly video?: string
 }
 
 /**

@@ -2,7 +2,7 @@
 
 给 DSH Web UI 糊上一层 2005 年的中文站点广告：正文两侧的广告栏、对话里的信息流、右下角"叮"一声弹出的消息窗、左下角的《贪玩蓝鲸》。
 
-每个 ✕ 都是画出来 16–20px，真正能点中的只有里面偏了位的 4–7px。点歪了，广告整屏放大给你看。
+每个 ✕ 都是画出来 16–20px，真正能点中的只有里面偏了位的 4–7px。点歪了整屏放大给你看——左下角那张会直接开始播视频。
 
 ![正文两侧的广告栏、对话内的信息流广告、左下角《贪玩蓝鲸》海报、右下角「DSH 消息中心」弹窗](assets/screenshot.webp)
 
@@ -22,7 +22,7 @@ dsh plugin --profile web add link:/path/to/dsh-ads
 
 装了社区 [plugin-registry](https://github.com/dsh-external/plugin-registry) 的用户也可以走它的通道（与上面的官方通道二选一）：设置页「插件」面板安装，或 `dsh registry install /path/to/dsh-ads`。
 
-换素材：图放进 `assets/ads`（侧栏）、`assets/popups`（右下角）或 `assets/posters`（左下角），在 `scripts/build-assets.mjs` 里补一行文案，跑 `pnpm run assets` 重新内联。改源码后跑 `pnpm run check`。
+换素材：图放进 `assets/ads`（侧栏）、`assets/popups`（右下角）或 `assets/posters`（左下角），在 `scripts/build-assets.mjs` 里补一行文案，跑 `pnpm run assets` 重新内联。webp 动图直接能用。在 `assets/posters` 里放一个同名 `.mp4`，点开广告时就播它。改源码后跑 `pnpm run check`。
 
 ## 免责
 
