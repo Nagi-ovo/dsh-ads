@@ -24,11 +24,14 @@ export const name = 'dsh-ads'
 
 export const inject = ['slots']
 
-/** Gap between corner pop-ups at zero banner pressure, in ms. */
-const DEFAULT_POPUP_INTERVAL_MS = 45_000
+/** Delay before the corner pop-up first appears, in ms. */
+const DEFAULT_POPUP_FIRST_DELAY_MS = 10_000
 
-/** Gap between bottom-left posters, in ms — the rarest, heaviest slot. */
-const DEFAULT_POSTER_INTERVAL_MS = 120_000
+/** Delay before the bottom-left poster first appears, in ms. */
+const DEFAULT_POSTER_FIRST_DELAY_MS = 20_000
+
+/** Delay before a closed pop-up or poster returns, in ms. */
+const DEFAULT_RESPAWN_MS = 60_000
 
 /** Dock entry: zero inline footprint, all output goes through the portal. */
 function AdDockEntry() {
@@ -39,8 +42,9 @@ function AdDockEntry() {
       posters={BUILTIN_POSTERS}
       spawn={DEFAULT_SPAWN}
       hitboxPx={DEFAULT_HITBOX_PX}
-      popupIntervalMs={DEFAULT_POPUP_INTERVAL_MS}
-      posterIntervalMs={DEFAULT_POSTER_INTERVAL_MS}
+      popupFirstDelayMs={DEFAULT_POPUP_FIRST_DELAY_MS}
+      posterFirstDelayMs={DEFAULT_POSTER_FIRST_DELAY_MS}
+      respawnMs={DEFAULT_RESPAWN_MS}
       chime
     />
   )

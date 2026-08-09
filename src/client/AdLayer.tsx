@@ -12,8 +12,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { createPortal } from 'react-dom'
 import { AdBanner } from './AdBanner.tsx'
 import { Lightbox } from './Lightbox.tsx'
-import { ToastPopup, POPUP_LIFETIME_MS } from './ToastPopup.tsx'
-import { GamePoster, POSTER_LIFETIME_MS } from './GamePoster.tsx'
+import { ToastPopup } from './ToastPopup.tsx'
+import { GamePoster } from './GamePoster.tsx'
 import { FALLBACK_SAFE_AREA, layout, resolvePlacement, type SafeArea, type Viewport } from './placement.ts'
 import { pruneCooling, targetCount, weightedPick, type SpawnConfig } from './schedule.ts'
 import type { AdCreative, PlacedAd } from './types.ts'
@@ -33,10 +33,15 @@ export interface AdLayerProps {
   readonly spawn: SpawnConfig
   /** Side of the real close hitbox, in CSS pixels. */
   readonly hitboxPx: number
-  /** Gap between corner pop-ups, in ms; zero disables them. */
-  readonly popupIntervalMs: number
-  /** Gap between bottom-left posters, in ms; zero disables them. */
-  readonly posterIntervalMs: number
+  /** Delay before the corner pop-up first appears, in ms; zero disables it. */
+  readonly popupFirstDelayMs: number
+  /** Delay before the bottom-left poster first appears, in ms; zero disables it. */
+  readonly posterFirstDelayMs: number
+  /**
+   * Delay before a closed pop-up or poster comes back, in ms. Neither retracts
+   * on its own, so this is the only thing that paces them after the first one.
+   */
+  readonly respawnMs: number
   /** Whether a pop-up or poster chimes on arrival. */
   readonly chime: boolean
 }
@@ -198,12 +203,19 @@ function pickCreative(
   return pool[weightedPick(w, Math.random())]
 }
 
-const nukeStyle: CSSProperties = {
+/** The pair of honest controls, centred along the bottom edge. */
+const controlBarStyle: CSSProperties = {
   position: 'fixed',
   left: '50%',
   transform: 'translateX(-50%)',
   bottom: 4,
   zIndex: 2_147_400_000,
+  display: 'flex',
+  gap: 4,
+  pointerEvents: 'auto',
+}
+
+const nukeStyle: CSSProperties = {
   padding: '2px 8px',
   border: '1px solid rgba(128, 128, 128, 0.5)',
   borderRadius: 3,
@@ -212,8 +224,10 @@ const nukeStyle: CSSProperties = {
   fontSize: 11,
   fontFamily: 'system-ui, sans-serif',
   cursor: 'pointer',
-  pointerEvents: 'auto',
 }
+
+/** Same chrome as the nuke button, sized down to one glyph. */
+const muteStyle: CSSProperties = { ...nukeStyle, padding: '2px 6px' }
 
 /**
  * Mount the layer.
@@ -221,7 +235,8 @@ const nukeStyle: CSSProperties = {
  * @returns a portal carrying every live banner, or null before the first spawn.
  */
 export function AdLayer(props: AdLayerProps) {
-  const { creatives, popups, posters, spawn, hitboxPx, popupIntervalMs, posterIntervalMs, chime } = props
+  const { creatives, popups, posters, spawn, hitboxPx, chime } = props
+  const { popupFirstDelayMs, posterFirstDelayMs, respawnMs } = props
   const viewport = useViewport()
   const safe = useSafeArea(viewport)
   const [ads, setAds] = useState<readonly PlacedAd[]>([])
@@ -236,6 +251,9 @@ export function AdLayer(props: AdLayerProps) {
   // layer for this page load. Nothing re-arms it short of a reload, so a user
   // who is done with the joke is done with it.
   const [retired, setRetired] = useState(false)
+  // Sound is on by default — a corner pop-up that announced itself silently
+  // was never the point — but one click kills it for the rest of the session.
+  const [muted, setMuted] = useState(false)
   const mountedAt = useRef(Date.now())
   const spawnedTotal = useRef(0)
   const placements = useRef(0)
@@ -286,13 +304,13 @@ export function AdLayer(props: AdLayerProps) {
     return () => clearInterval(timer)
   }, [creatives, weights, spawn, cooling, retired, viewport, safe])
 
-  // The corner pop-up runs on its own clock: it rotates through its pool in
-  // order (each round is a different creative), and its cadence tightens as
-  // the gutters fill, so a long session escalates on both axes at once.
+  // Both corners follow the same rule: show up shortly after the session
+  // opens, then sit there until closed, then come back after `respawnMs`.
+  // The effect is a no-op while one is on screen, so nothing replaces a
+  // pop-up the user is still looking at — and the delay after that is the
+  // respawn gap, because the only way it left is that the user closed it.
   useEffect(() => {
-    if (retired || popups.length === 0 || popupIntervalMs <= 0) return
-    const pressure = 1 / (1 + ads.length * 0.12)
-    const gap = Math.max(POPUP_LIFETIME_MS, popupIntervalMs * pressure)
+    if (retired || popups.length === 0 || popupFirstDelayMs <= 0 || popup !== undefined) return
     const timer = setTimeout(() => {
       const creative = popups[popupRound.current % popups.length]
       if (creative === undefined) return
@@ -305,15 +323,14 @@ export function AdLayer(props: AdLayerProps) {
         seed: Math.random(),
         bornAt: Date.now(),
       })
-    }, gap)
+    }, popupRound.current === 0 ? popupFirstDelayMs : respawnMs)
     return () => clearTimeout(timer)
-  }, [popups, popupIntervalMs, ads.length, popup, retired])
+  }, [popups, popupFirstDelayMs, respawnMs, popup, retired])
 
   // The bottom-left poster: opposite corner from the pop-up so the two never
-  // fight for the same pixels, and a much rarer cadence — it is the largest
-  // interruption the layer makes.
+  // fight for the same pixels.
   useEffect(() => {
-    if (retired || posters.length === 0 || posterIntervalMs <= 0) return
+    if (retired || posters.length === 0 || posterFirstDelayMs <= 0 || poster !== undefined) return
     const timer = setTimeout(() => {
       const creative = posters[posterRound.current % posters.length]
       if (creative === undefined) return
@@ -326,9 +343,9 @@ export function AdLayer(props: AdLayerProps) {
         seed: Math.random(),
         bornAt: Date.now(),
       })
-    }, Math.max(POSTER_LIFETIME_MS, posterIntervalMs))
+    }, posterRound.current === 0 ? posterFirstDelayMs : respawnMs)
     return () => clearTimeout(timer)
-  }, [posters, posterIntervalMs, poster, retired])
+  }, [posters, posterFirstDelayMs, respawnMs, poster, retired])
 
   const dismiss = useCallback((key: string) => {
     setAds((current) => current.filter((ad) => ad.key !== key))
@@ -370,7 +387,7 @@ export function AdLayer(props: AdLayerProps) {
           key={popup.key}
           creative={popup.creative}
           seed={popup.seed}
-          chime={chime}
+          chime={chime && !muted}
           onClose={() => setPopup(undefined)}
           onMisfire={() => setTakeover(popup)}
         />
@@ -380,12 +397,23 @@ export function AdLayer(props: AdLayerProps) {
           key={poster.key}
           creative={poster.creative}
           seed={poster.seed}
-          chime={chime}
+          chime={chime && !muted}
           onClose={() => setPoster(undefined)}
           onMisfire={() => setTakeover(poster)}
         />
       )}
-      <button type="button" style={nukeStyle} onClick={nuke}>关闭所有广告</button>
+      <div style={controlBarStyle}>
+        <button
+          type="button"
+          style={muteStyle}
+          aria-label={muted ? '取消静音' : '静音广告'}
+          title={muted ? '取消静音' : '静音广告'}
+          onClick={() => setMuted((on) => !on)}
+        >
+          {muted ? '🔇' : '🔊'}
+        </button>
+        <button type="button" style={nukeStyle} onClick={nuke}>关闭所有广告</button>
+      </div>
       {takeover !== undefined && (
         <Lightbox
           creative={takeover.creative}

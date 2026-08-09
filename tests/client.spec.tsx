@@ -46,23 +46,42 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-/** Render the layer and let its first spawn tick run. */
-function mount(): void {
+/** Corner artwork, used only by the pop-up cadence test. */
+const POPUPS: readonly AdCreative[] = [
+  { id: 'p', width: 600, height: 400, shape: 'wide', weight: 1, alt: '广告弹窗', src: 'data:,' },
+]
+
+/** First-appearance and respawn delays for the corner cadence test. */
+const POPUP_FIRST_MS = 10_000
+const RESPAWN_MS = 60_000
+
+/**
+ * Render the layer and let its first spawn tick run.
+ * @param corners - mount the corner pop-up too; off by default so the gutter
+ * tests are not perturbed by an extra timer.
+ */
+function mount(corners = false): void {
   act(() => {
     root.render(
       <AdLayer
         creatives={CREATIVES}
-        popups={[]}
+        popups={corners ? POPUPS : []}
         posters={[]}
         spawn={FAST}
         hitboxPx={7}
-        popupIntervalMs={0}
-        posterIntervalMs={0}
+        popupFirstDelayMs={corners ? POPUP_FIRST_MS : 0}
+        posterFirstDelayMs={0}
+        respawnMs={RESPAWN_MS}
         chime={false}
       />,
     )
   })
   act(() => { vi.advanceTimersByTime(3000) })
+}
+
+/** The corner pop-up's image, if one is on screen. */
+function popup(): HTMLImageElement | undefined {
+  return [...document.querySelectorAll('img')].find((img) => img.alt === '广告弹窗')
 }
 
 /** Every banner image currently portalled onto the document. */
@@ -109,6 +128,34 @@ describe('AdLayer', () => {
     act(() => { close?.click() })
     expect(banner?.isConnected).toBe(false)
     expect(document.body.textContent).not.toContain('秒后可跳过')
+  })
+
+  it('holds the corner pop-up on screen until it is closed, then brings it back', () => {
+    mount(true)
+    expect(popup()).toBeUndefined()
+    act(() => { vi.advanceTimersByTime(POPUP_FIRST_MS) })
+    expect(popup()).toBeDefined()
+    // It must not retract on its own: an ad that leaves unprompted is a
+    // notification, and the whole joke is that you have to hit the ✕.
+    act(() => { vi.advanceTimersByTime(5 * 60_000) })
+    expect(popup()).toBeDefined()
+    const close = [...document.querySelectorAll('button')]
+      .find((b) => b.getAttribute('aria-label') === '关闭弹窗广告')
+    act(() => { close?.click() })
+    expect(popup()).toBeUndefined()
+    act(() => { vi.advanceTimersByTime(RESPAWN_MS / 2) })
+    expect(popup()).toBeUndefined()
+    act(() => { vi.advanceTimersByTime(RESPAWN_MS) })
+    expect(popup()).toBeDefined()
+  })
+
+  it('mutes and unmutes from the control bar', () => {
+    mount()
+    const mute = () => [...document.querySelectorAll('button')]
+      .find((b) => b.getAttribute('aria-label')?.includes('静音'))
+    expect(mute()?.getAttribute('aria-label')).toBe('静音广告')
+    act(() => { mute()?.click() })
+    expect(mute()?.getAttribute('aria-label')).toBe('取消静音')
   })
 
   it('leaves the slot empty for the cooldown, then refills it', () => {

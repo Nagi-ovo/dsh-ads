@@ -22,9 +22,6 @@ const POSTER_HITBOX_PX = 4
 /** Visual size of the poster's ✕ glyph box, in CSS pixels. */
 const POSTER_CLOSE_PX = 18
 
-/** How long a poster stays before retracting on its own, in ms. */
-export const POSTER_LIFETIME_MS = 20_000
-
 /** Props for one bottom-left poster. */
 export interface GamePosterProps {
   /** The artwork to show. */
@@ -33,7 +30,7 @@ export interface GamePosterProps {
   readonly seed: number
   /** Whether to chime on arrival. */
   readonly chime: boolean
-  /** Called when the real hitbox is hit, or the lifetime expires. */
+  /** Called when the real hitbox is hit. */
   readonly onClose: () => void
   /** Called when anything else on the poster is clicked. */
   readonly onMisfire: () => void
@@ -61,15 +58,12 @@ const chromeStyle: CSSProperties = {
 export function GamePoster({ creative, seed, chime, onClose, onMisfire }: GamePosterProps) {
   const [entered, setEntered] = useState(false)
   const hit = resolveHitbox(seed, POSTER_HITBOX_PX)
+  // No retract timer: it stays until the user finds the real hitbox.
   useEffect(() => {
     if (chime) playRing()
     const raise = setTimeout(() => setEntered(true), 16)
-    const retract = setTimeout(onClose, POSTER_LIFETIME_MS)
-    return () => {
-      clearTimeout(raise)
-      clearTimeout(retract)
-    }
-  }, [chime, onClose])
+    return () => clearTimeout(raise)
+  }, [chime])
   const height = POSTER_WIDTH * (creative.height / creative.width)
   return (
     <div

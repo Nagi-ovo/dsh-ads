@@ -28,9 +28,6 @@ const POPUP_HITBOX_PX = 5
 /** Visual size of the pop-up's ✕ glyph box, in CSS pixels. */
 const POPUP_CLOSE_PX = 16
 
-/** How long a pop-up stays before retracting on its own, in ms. */
-export const POPUP_LIFETIME_MS = 12_000
-
 /** Props for one corner pop-up. */
 export interface ToastPopupProps {
   /** The artwork to show. */
@@ -39,7 +36,7 @@ export interface ToastPopupProps {
   readonly seed: number
   /** Whether to chime on arrival. */
   readonly chime: boolean
-  /** Called when the real hitbox is hit, or the lifetime expires. */
+  /** Called when the real hitbox is hit. */
   readonly onClose: () => void
   /** Called when anything else on the pop-up is clicked. */
   readonly onMisfire: () => void
@@ -66,15 +63,13 @@ const chromeStyle: CSSProperties = {
 export function ToastPopup({ creative, seed, chime, onClose, onMisfire }: ToastPopupProps) {
   const [entered, setEntered] = useState(false)
   const hit = resolveHitbox(seed, POPUP_HITBOX_PX)
+  // No retract timer: a pop-up that leaves on its own is a notification, not
+  // an ad. It sits there until the user finds the real hitbox.
   useEffect(() => {
     if (chime) playChime()
     const raise = setTimeout(() => setEntered(true), 16)
-    const retract = setTimeout(onClose, POPUP_LIFETIME_MS)
-    return () => {
-      clearTimeout(raise)
-      clearTimeout(retract)
-    }
-  }, [chime, onClose])
+    return () => clearTimeout(raise)
+  }, [chime])
   const height = POPUP_WIDTH * (creative.height / creative.width)
   return (
     <div
