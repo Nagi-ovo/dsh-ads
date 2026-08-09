@@ -67,12 +67,24 @@ const chromeStyle: CSSProperties = {
   userSelect: 'none',
 }
 
+/**
+ * The ⚙ popover. It opens *above* the title bar because the card is
+ * bottom-anchored — dropping it downward would cover the artwork it belongs to.
+ */
 const settingsPanelStyle: CSSProperties = {
+  position: 'absolute',
+  bottom: '100%',
+  right: -2,
+  marginBottom: 6,
+  minWidth: 164,
+  padding: '4px 0',
   display: 'flex',
-  gap: 4,
-  padding: 5,
-  background: 'rgba(28, 28, 28, 0.94)',
-  borderBottom: '1px solid rgba(201, 162, 39, 0.5)',
+  flexDirection: 'column',
+  background: 'rgba(30, 30, 32, 0.97)',
+  border: '1px solid rgba(255, 255, 255, 0.12)',
+  borderRadius: 7,
+  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5)',
+  overflow: 'hidden',
 }
 
 const chromeButtonStyle: CSSProperties = {
@@ -85,6 +97,14 @@ const chromeButtonStyle: CSSProperties = {
   fontSize: 11,
   lineHeight: 1,
   cursor: 'pointer',
+}
+
+/** The ⚙ is a real control people are meant to find, so it gets a real target. */
+const gearButtonStyle: CSSProperties = {
+  ...chromeButtonStyle,
+  width: 22,
+  height: 18,
+  fontSize: 13,
 }
 
 /**
@@ -119,7 +139,6 @@ export function GamePoster(props: GamePosterProps) {
         // Suppressed mid-drag: a transition on a dragged element lags the
         // cursor and feels broken.
         transition: drag.dragging ? 'none' : 'transform 520ms cubic-bezier(0.16, 1, 0.3, 1)',
-        boxShadow: '0 3px 18px rgba(0, 0, 0, 0.6)',
         border: '2px solid #c9a227',
         pointerEvents: 'auto',
       }}
@@ -130,16 +149,27 @@ export function GamePoster(props: GamePosterProps) {
       >
         <span>★ 火爆开服 ★</span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <button
-            type="button"
-            style={chromeButtonStyle}
-            aria-label="广告设置"
-            title="广告设置"
-            onPointerDown={(event) => event.stopPropagation()}
-            onClick={() => setSettingsOpen((open) => !open)}
-          >
-            ⚙
-          </button>
+          <span style={{ position: 'relative', display: 'flex' }}>
+            <button
+              type="button"
+              style={gearButtonStyle}
+              aria-label="广告设置"
+              title="广告设置"
+              aria-expanded={settingsOpen}
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={() => setSettingsOpen((open) => !open)}
+            >
+              ⚙
+            </button>
+            {settingsOpen && (
+              <div
+                style={settingsPanelStyle}
+                onPointerDown={(event) => event.stopPropagation()}
+              >
+                <AdControls {...props.controls} layout="menu" />
+              </div>
+            )}
+          </span>
           <button
             type="button"
             style={chromeButtonStyle}
@@ -185,13 +215,6 @@ export function GamePoster(props: GamePosterProps) {
           </span>
         </span>
       </div>
-      {settingsOpen && (
-        // Anchored to the title bar rather than the card, so it opens in the
-        // same place whether or not the poster is folded.
-        <div style={settingsPanelStyle}>
-          <AdControls {...props.controls} />
-        </div>
-      )}
       {!collapsed && (
         <img
           src={creative.src}

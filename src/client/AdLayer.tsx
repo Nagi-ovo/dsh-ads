@@ -440,7 +440,7 @@ export function AdLayer(props: AdLayerProps) {
           fallback for the minutes it is not on screen. */}
       {poster === undefined && (
         <div style={controlBarStyle}>
-          <AdControls {...controls} />
+          <AdControls {...controls} layout="row" />
         </div>
       )}
       {takeover !== undefined && (

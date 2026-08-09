@@ -2,14 +2,18 @@
  * The three honest controls: mute, solo, and the one button that really does
  * close everything.
  *
- * Shared by two hosts. Normally they live inside the poster's title bar, so
- * they cost no screen space of their own; when the poster is off-screen — the
- * minute after it is closed, or before it first appears — the layer falls back
- * to a small bar along the bottom edge. Either way they are always reachable,
- * which is the point: a mute button you cannot find is not a mute button.
+ * Shared by two hosts in two shapes. Inside the poster's ⚙ they render as a
+ * proper popover menu — one item per row, room for a label — because three
+ * buttons crammed across a 300px title bar is unreadable. When the poster is
+ * off-screen the layer falls back to a compact row along the bottom edge.
+ * Either way they stay reachable, which is the point: a mute button you cannot
+ * find is not a mute button.
  */
 
-import type { CSSProperties } from 'react'
+import { useState, type CSSProperties } from 'react'
+
+/** How the cluster is laid out. */
+export type ControlsLayout = 'menu' | 'row'
 
 /** Props for the control cluster. */
 export interface AdControlsProps {
@@ -25,7 +29,17 @@ export interface AdControlsProps {
   readonly onNuke: () => void
 }
 
-const buttonStyle: CSSProperties = {
+/** One row of the menu. */
+interface Item {
+  /** Leading glyph. */
+  readonly icon: string
+  /** Row label. */
+  readonly label: string
+  /** Row action. */
+  readonly onClick: () => void
+}
+
+const rowButtonStyle: CSSProperties = {
   padding: '2px 8px',
   border: '1px solid rgba(128, 128, 128, 0.5)',
   borderRadius: 3,
@@ -38,32 +52,67 @@ const buttonStyle: CSSProperties = {
   cursor: 'pointer',
 }
 
+const menuItemStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  width: '100%',
+  padding: '7px 11px',
+  border: 0,
+  background: 'transparent',
+  color: 'rgba(255, 255, 255, 0.92)',
+  fontSize: 12,
+  fontFamily: 'system-ui, sans-serif',
+  lineHeight: '16px',
+  whiteSpace: 'nowrap',
+  textAlign: 'left',
+  cursor: 'pointer',
+}
+
 /**
- * Draw the three controls in a row.
- * @param props - see {@link AdControlsProps}.
- * @returns the button cluster.
+ * Draw the controls.
+ * @param props - the control state and callbacks, plus the layout to use.
+ * @returns the menu rows or the compact button row.
  */
-export function AdControls({ muted, onToggleMute, solo, onToggleSolo, onNuke }: AdControlsProps) {
+export function AdControls(props: AdControlsProps & { readonly layout: ControlsLayout }) {
+  const { muted, onToggleMute, solo, onToggleSolo, onNuke, layout } = props
+  const [hovered, setHovered] = useState(-1)
+  const items: readonly Item[] = [
+    { icon: muted ? '🔇' : '🔊', label: muted ? '取消静音' : '静音广告', onClick: onToggleMute },
+    { icon: '🐋', label: solo ? '恢复全部广告' : '只留蓝鲸', onClick: onToggleSolo },
+    { icon: '🚫', label: '关闭所有广告', onClick: onNuke },
+  ]
+  if (layout === 'row') {
+    return (
+      <>
+        {items.map((item) => (
+          <button key={item.label} type="button" style={rowButtonStyle} onClick={item.onClick}>
+            {item.icon} {item.label}
+          </button>
+        ))}
+      </>
+    )
+  }
   return (
     <>
-      <button
-        type="button"
-        style={{ ...buttonStyle, padding: '2px 6px' }}
-        aria-label={muted ? '取消静音' : '静音广告'}
-        title={muted ? '取消静音' : '静音广告'}
-        onClick={onToggleMute}
-      >
-        {muted ? '🔇' : '🔊'}
-      </button>
-      <button
-        type="button"
-        style={buttonStyle}
-        title={solo ? '把其它广告放回来' : '只保留《贪玩蓝鲸》，其它全部关掉'}
-        onClick={onToggleSolo}
-      >
-        {solo ? '恢复全部广告' : '只留蓝鲸'}
-      </button>
-      <button type="button" style={buttonStyle} onClick={onNuke}>关闭所有广告</button>
+      {items.map((item, index) => (
+        <button
+          key={item.label}
+          type="button"
+          style={{
+            ...menuItemStyle,
+            background: hovered === index ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+            // The destructive one reads as destructive.
+            color: index === items.length - 1 ? 'rgba(255, 160, 160, 0.95)' : menuItemStyle.color,
+          }}
+          onMouseEnter={() => setHovered(index)}
+          onMouseLeave={() => setHovered(-1)}
+          onClick={item.onClick}
+        >
+          <span aria-hidden="true" style={{ width: 16 }}>{item.icon}</span>
+          {item.label}
+        </button>
+      ))}
     </>
   )
 }

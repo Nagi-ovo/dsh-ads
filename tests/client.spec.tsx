@@ -91,7 +91,7 @@ function banners(): HTMLImageElement[] {
 
 /** The layer's own "关闭所有广告" control, if it is mounted. */
 function nukeButton(): HTMLButtonElement | undefined {
-  return [...document.querySelectorAll('button')].find((b) => b.textContent === '关闭所有广告')
+  return [...document.querySelectorAll('button')].find((b) => b.textContent?.includes('关闭所有广告'))
 }
 
 describe('AdLayer', () => {
@@ -153,7 +153,7 @@ describe('AdLayer', () => {
     mount()
     expect(banners().length).toBeGreaterThan(0)
     const solo = () => [...document.querySelectorAll('button')]
-      .find((b) => b.textContent === '只留蓝鲸' || b.textContent === '恢复全部广告')
+      .find((b) => b.textContent?.includes('只留蓝鲸') || b.textContent?.includes('恢复全部广告'))
     act(() => { solo()?.click() })
     expect(banners()).toHaveLength(0)
     act(() => { vi.advanceTimersByTime(30_000) })
@@ -174,10 +174,10 @@ describe('AdLayer', () => {
   it('mutes and unmutes from the control bar', () => {
     mount()
     const mute = () => [...document.querySelectorAll('button')]
-      .find((b) => b.getAttribute('aria-label')?.includes('静音'))
-    expect(mute()?.getAttribute('aria-label')).toBe('静音广告')
+      .find((b) => b.textContent?.includes('静音'))
+    expect(mute()?.textContent).toContain('静音广告')
     act(() => { mute()?.click() })
-    expect(mute()?.getAttribute('aria-label')).toBe('取消静音')
+    expect(mute()?.textContent).toContain('取消静音')
   })
 
   it('leaves the slot empty for the cooldown, then refills it', () => {
