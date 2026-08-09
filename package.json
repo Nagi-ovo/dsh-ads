@@ -1,0 +1,65 @@
+{
+  "name": "@dsh-external/dsh-ads",
+  "description": "DSH ad-infestation plugin: a DeepSeek-flavoured 2000s Chinese ad layer that grows across the web UI over a session, complete with corner pop-ups, a chime, and close buttons whose real hitbox is smaller than the ✕ you are aiming at.",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./client": "./lib/client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "src",
+    "assets",
+    "cordis.patch.yml",
+    "dsh.plugin.json"
+  ],
+  "scripts": {
+    "assets": "node scripts/build-assets.mjs",
+    "build": "tsdown",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.client.json",
+    "test": "vitest run",
+    "check": "pnpm run typecheck && pnpm run test && pnpm run build"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "dshClient": {
+    "inject": [
+      "@deepseek-ai/dsh-client-runtime"
+    ],
+    "platform": "web"
+  },
+  "peerDependencies": {
+    "cordis": "^4.0.0-rc.7",
+    "react": "^18.2.0",
+    "schemastery": "*"
+  },
+  "devDependencies": {
+    "@deepseek-ai/dsh-client-runtime": "link:../../.dsh/source/current/packages/client/runtime",
+    "@deepseek-ai/dsh-client-ui-conversation": "link:../../.dsh/source/current/packages/client/ui-conversation",
+    "@deepseek-ai/dsh-client-ui-slots": "link:../../.dsh/source/current/packages/client/ui-slots",
+    "@types/node": "^22.0.0",
+    "@types/react": "~18.3.1",
+    "@types/react-dom": "^18.3.1",
+    "cordis": "link:../../.dsh/source/current/vendor/cordis",
+    "jsdom": "^25.0.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "schemastery": "link:../../.dsh/source/current/vendor/schemastery",
+    "tsdown": "^0.22.2",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.1"
+  },
+  "license": "BSD-3-Clause"
+}
