@@ -14,6 +14,7 @@ import { AdBanner } from './AdBanner.tsx'
 import { Lightbox } from './Lightbox.tsx'
 import { ToastPopup } from './ToastPopup.tsx'
 import { GamePoster, POSTER_WIDTH } from './GamePoster.tsx'
+import { AdControls, type AdControlsProps } from './AdControls.tsx'
 import { usePersisted, type Anchor } from './persist.ts'
 import { FALLBACK_SAFE_AREA, layout, resolvePlacement, type SafeArea, type Viewport } from './placement.ts'
 import { pruneCooling, targetCount, weightedPick, type SpawnConfig } from './schedule.ts'
@@ -377,6 +378,21 @@ export function AdLayer(props: AdLayerProps) {
   /** Where the poster starts before anyone drags it: the bottom-left corner. */
   const defaultAnchor: Anchor = { left: 12, bottom: 12 }
 
+  const controls: AdControlsProps = {
+    muted,
+    onToggleMute: () => setMuted(!muted),
+    solo,
+    onToggleSolo: () => {
+      // Clearing the gutters on the way in keeps the two modes cleanly
+      // separated: leaving them in state would render nothing but still hold
+      // the layer "occupied". Coming back out, they respawn on the next tick.
+      setAds([])
+      setPopup(undefined)
+      setSolo(!solo)
+    },
+    onNuke: nuke,
+  }
+
   if (retired) return null
   // Solo mode always renders, even with nothing on screen yet: the control bar
   // lives in this tree, and bailing out early while the poster is still on its
@@ -417,36 +433,16 @@ export function AdLayer(props: AdLayerProps) {
           onToggleCollapse={() => setCollapsed(!collapsed)}
           onClose={() => setPoster(undefined)}
           onMisfire={() => setTakeover(poster)}
+          controls={controls}
         />
       )}
-      <div style={controlBarStyle}>
-        <button
-          type="button"
-          style={muteStyle}
-          aria-label={muted ? '取消静音' : '静音广告'}
-          title={muted ? '取消静音' : '静音广告'}
-          onClick={() => setMuted((on) => !on)}
-        >
-          {muted ? '🔇' : '🔊'}
-        </button>
-        <button
-          type="button"
-          style={nukeStyle}
-          title={solo ? '把其它广告放回来' : '只保留《贪玩蓝鲸》，其它全部关掉'}
-          onClick={() => {
-            // Clearing the gutters on the way in keeps the two modes cleanly
-            // separated: leaving them in state would render nothing but still
-            // hold the layer "occupied". Coming back out, they respawn to full
-            // strength on the next tick.
-            setAds([])
-            setPopup(undefined)
-            setSolo(!solo)
-          }}
-        >
-          {solo ? '恢复全部广告' : '只留蓝鲸'}
-        </button>
-        <button type="button" style={nukeStyle} onClick={nuke}>关闭所有广告</button>
-      </div>
+      {/* The poster carries these in its title bar; the bottom bar is the
+          fallback for the minutes it is not on screen. */}
+      {poster === undefined && (
+        <div style={controlBarStyle}>
+          <AdControls {...controls} />
+        </div>
+      )}
       {takeover !== undefined && (
         <Lightbox
           creative={takeover.creative}

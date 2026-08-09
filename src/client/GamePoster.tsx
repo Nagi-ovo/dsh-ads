@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useState, type CSSProperties } from 'react'
+import { AdControls, type AdControlsProps } from './AdControls.tsx'
 import type { AdCreative } from './types.ts'
 import type { Anchor } from './persist.ts'
 import { useDrag } from './useDrag.ts'
@@ -47,6 +48,8 @@ export interface GamePosterProps {
   readonly onClose: () => void
   /** Called when the artwork itself is clicked (and not dragged). */
   readonly onMisfire: () => void
+  /** The layer's controls, revealed by the title bar's ⚙. */
+  readonly controls: AdControlsProps
 }
 
 const chromeStyle: CSSProperties = {
@@ -62,6 +65,14 @@ const chromeStyle: CSSProperties = {
   fontFamily: 'system-ui, sans-serif',
   fontWeight: 700,
   userSelect: 'none',
+}
+
+const settingsPanelStyle: CSSProperties = {
+  display: 'flex',
+  gap: 4,
+  padding: 5,
+  background: 'rgba(28, 28, 28, 0.94)',
+  borderBottom: '1px solid rgba(201, 162, 39, 0.5)',
 }
 
 const chromeButtonStyle: CSSProperties = {
@@ -84,6 +95,7 @@ const chromeButtonStyle: CSSProperties = {
 export function GamePoster(props: GamePosterProps) {
   const { creative, seed, chime, anchor, onMove, collapsed, onToggleCollapse, onClose, onMisfire } = props
   const [entered, setEntered] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const hit = resolveHitbox(seed, POSTER_HITBOX_PX)
   const height = POSTER_WIDTH * (creative.height / creative.width)
   const drag = useDrag(anchor, onMove, { width: POSTER_WIDTH, height: (collapsed ? 0 : height) + CHROME_H })
@@ -118,6 +130,16 @@ export function GamePoster(props: GamePosterProps) {
       >
         <span>★ 火爆开服 ★</span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <button
+            type="button"
+            style={chromeButtonStyle}
+            aria-label="广告设置"
+            title="广告设置"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={() => setSettingsOpen((open) => !open)}
+          >
+            ⚙
+          </button>
           <button
             type="button"
             style={chromeButtonStyle}
@@ -163,6 +185,13 @@ export function GamePoster(props: GamePosterProps) {
           </span>
         </span>
       </div>
+      {settingsOpen && (
+        // Anchored to the title bar rather than the card, so it opens in the
+        // same place whether or not the poster is folded.
+        <div style={settingsPanelStyle}>
+          <AdControls {...props.controls} />
+        </div>
+      )}
       {!collapsed && (
         <img
           src={creative.src}

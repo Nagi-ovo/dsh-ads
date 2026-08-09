@@ -163,6 +163,14 @@ describe('AdLayer', () => {
     expect(banners().length).toBeGreaterThan(0)
   })
 
+  it('keeps the controls reachable while the poster is off screen', () => {
+    // The poster hosts the controls in its title bar; with no poster mounted,
+    // the bottom bar has to stand in, or a user who closed it is stuck with
+    // whatever mode they were in.
+    mount()
+    expect(nukeButton()).toBeDefined()
+  })
+
   it('mutes and unmutes from the control bar', () => {
     mount()
     const mute = () => [...document.querySelectorAll('button')]
