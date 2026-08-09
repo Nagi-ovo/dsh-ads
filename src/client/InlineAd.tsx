@@ -18,6 +18,7 @@ import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { AdCreative } from './types.ts'
 import { resolveHitbox, VISUAL_CLOSE_PX } from './hitbox.ts'
+import { usePersisted } from './persist.ts'
 
 /** Show an ad after every Nth turn. */
 export const INLINE_EVERY_N_TURNS = 2
@@ -72,8 +73,12 @@ const labelStyle: CSSProperties = {
  */
 export function InlineAd({ seq, pool }: InlineAdProps) {
   const [closed, setClosed] = useState(false)
+  // Solo mode is set on the floating layer, in a different React tree; the
+  // preference is shared through storage so "keep only the poster" really does
+  // mean only the poster.
+  const [solo] = usePersisted('solo', false)
   const creative = creativeForTurn(seq, pool)
-  if (closed || creative === undefined) return null
+  if (solo || closed || creative === undefined) return null
   // Seed from seq so the hitbox is stable per turn without any stored state.
   const hit = resolveHitbox((seq * 0.618_033) % 1)
   return (

@@ -13,7 +13,8 @@ import { createPortal } from 'react-dom'
 import { AdBanner } from './AdBanner.tsx'
 import { Lightbox } from './Lightbox.tsx'
 import { ToastPopup } from './ToastPopup.tsx'
-import { GamePoster } from './GamePoster.tsx'
+import { GamePoster, POSTER_WIDTH } from './GamePoster.tsx'
+import { usePersisted, type Anchor } from './persist.ts'
 import { FALLBACK_SAFE_AREA, layout, resolvePlacement, type SafeArea, type Viewport } from './placement.ts'
 import { pruneCooling, targetCount, weightedPick, type SpawnConfig } from './schedule.ts'
 import type { AdCreative, PlacedAd } from './types.ts'
@@ -254,6 +255,12 @@ export function AdLayer(props: AdLayerProps) {
   // Sound is on by default — a corner pop-up that announced itself silently
   // was never the point — but one click kills it for the rest of the session.
   const [muted, setMuted] = useState(false)
+  // Solo mode: keep the poster, drop everything else. This is a preference
+  // rather than a dismissal, so unlike every other bit of layer state it
+  // survives a reload — along with where the user dragged the thing to.
+  const [solo, setSolo] = usePersisted('solo', false)
+  const [collapsed, setCollapsed] = usePersisted('poster-collapsed', false)
+  const [anchor, setAnchor] = usePersisted<Anchor | null>('poster-anchor', null)
   const mountedAt = useRef(Date.now())
   const spawnedTotal = useRef(0)
   const placements = useRef(0)
@@ -262,7 +269,7 @@ export function AdLayer(props: AdLayerProps) {
   const weights = useMemo(() => creatives.map((c) => c.weight), [creatives])
 
   useEffect(() => {
-    if (creatives.length === 0 || retired) return
+    if (creatives.length === 0 || retired || solo) return
     const tick = () => {
       const now = Date.now()
       setCooling((current) => pruneCooling(now, current))
@@ -302,7 +309,7 @@ export function AdLayer(props: AdLayerProps) {
     tick()
     const timer = setInterval(tick, TICK_MS)
     return () => clearInterval(timer)
-  }, [creatives, weights, spawn, cooling, retired, viewport, safe])
+  }, [creatives, weights, spawn, cooling, retired, solo, viewport, safe])
 
   // Both corners follow the same rule: show up shortly after the session
   // opens, then sit there until closed, then come back after `respawnMs`.
@@ -310,7 +317,7 @@ export function AdLayer(props: AdLayerProps) {
   // pop-up the user is still looking at — and the delay after that is the
   // respawn gap, because the only way it left is that the user closed it.
   useEffect(() => {
-    if (retired || popups.length === 0 || popupFirstDelayMs <= 0 || popup !== undefined) return
+    if (retired || solo || popups.length === 0 || popupFirstDelayMs <= 0 || popup !== undefined) return
     const timer = setTimeout(() => {
       const creative = popups[popupRound.current % popups.length]
       if (creative === undefined) return
@@ -325,7 +332,7 @@ export function AdLayer(props: AdLayerProps) {
       })
     }, popupRound.current === 0 ? popupFirstDelayMs : respawnMs)
     return () => clearTimeout(timer)
-  }, [popups, popupFirstDelayMs, respawnMs, popup, retired])
+  }, [popups, popupFirstDelayMs, respawnMs, popup, retired, solo])
 
   // The bottom-left poster: opposite corner from the pop-up so the two never
   // fight for the same pixels.
@@ -366,10 +373,16 @@ export function AdLayer(props: AdLayerProps) {
   // Laid out as a running total down each gutter, so banners that overflow the
   // composer band are simply not drawn; closing one slides the rest up and can
   // bring an overflowed banner back into view.
-  const placed = layout(ads, viewport, safe)
+  const placed = solo ? [] : layout(ads, viewport, safe)
+  /** Where the poster starts before anyone drags it: the bottom-left corner. */
+  const defaultAnchor: Anchor = { left: 12, bottom: 12 }
 
   if (retired) return null
-  if (ads.length === 0 && takeover === undefined && popup === undefined && poster === undefined) return null
+  // Solo mode always renders, even with nothing on screen yet: the control bar
+  // lives in this tree, and bailing out early while the poster is still on its
+  // opening delay would strand the user in a mode they cannot leave.
+  const empty = ads.length === 0 && takeover === undefined && popup === undefined && poster === undefined
+  if (empty && !solo) return null
   return createPortal(
     <div style={{ position: 'fixed', inset: 0, zIndex: 2_147_400_000, pointerEvents: 'none' }}>
       {placed.map(({ ad, box }) => (
@@ -398,6 +411,10 @@ export function AdLayer(props: AdLayerProps) {
           creative={poster.creative}
           seed={poster.seed}
           chime={chime && !muted}
+          anchor={anchor ?? defaultAnchor}
+          onMove={setAnchor}
+          collapsed={collapsed}
+          onToggleCollapse={() => setCollapsed(!collapsed)}
           onClose={() => setPoster(undefined)}
           onMisfire={() => setTakeover(poster)}
         />
@@ -411,6 +428,22 @@ export function AdLayer(props: AdLayerProps) {
           onClick={() => setMuted((on) => !on)}
         >
           {muted ? '🔇' : '🔊'}
+        </button>
+        <button
+          type="button"
+          style={nukeStyle}
+          title={solo ? '把其它广告放回来' : '只保留《贪玩蓝鲸》，其它全部关掉'}
+          onClick={() => {
+            // Clearing the gutters on the way in keeps the two modes cleanly
+            // separated: leaving them in state would render nothing but still
+            // hold the layer "occupied". Coming back out, they respawn to full
+            // strength on the next tick.
+            setAds([])
+            setPopup(undefined)
+            setSolo(!solo)
+          }}
+        >
+          {solo ? '恢复全部广告' : '只留蓝鲸'}
         </button>
         <button type="button" style={nukeStyle} onClick={nuke}>关闭所有广告</button>
       </div>

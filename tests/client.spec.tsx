@@ -149,6 +149,20 @@ describe('AdLayer', () => {
     expect(popup()).toBeDefined()
   })
 
+  it('drops every other ad in solo mode and puts them back on the way out', () => {
+    mount()
+    expect(banners().length).toBeGreaterThan(0)
+    const solo = () => [...document.querySelectorAll('button')]
+      .find((b) => b.textContent === '只留蓝鲸' || b.textContent === '恢复全部广告')
+    act(() => { solo()?.click() })
+    expect(banners()).toHaveLength(0)
+    act(() => { vi.advanceTimersByTime(30_000) })
+    expect(banners()).toHaveLength(0)
+    act(() => { solo()?.click() })
+    act(() => { vi.advanceTimersByTime(3000) })
+    expect(banners().length).toBeGreaterThan(0)
+  })
+
   it('mutes and unmutes from the control bar', () => {
     mount()
     const mute = () => [...document.querySelectorAll('button')]
