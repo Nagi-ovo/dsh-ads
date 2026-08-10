@@ -53,6 +53,17 @@ describe('nationalRank', () => {
   it('never claims a rank below first place', () => {
     expect(nationalRank(100)).toBeGreaterThanOrEqual(1)
   })
+
+  it('agrees with the percentile it was derived from', () => {
+    // The two numbers are the same fact stated twice: "beat 99%" has to mean
+    // "roughly one in a hundred of the base is ahead of you", or the window
+    // contradicts itself out loud.
+    const score = scorePercentile(CALIBRATION_MS)
+    const ahead = nationalRank(score)
+    const total = nationalRank(0)
+    expect(ahead / total).toBeCloseTo((100 - score) / 100, 3)
+    expect(ahead).toBeLessThan(3000)
+  })
 })
 
 describe('tierName', () => {

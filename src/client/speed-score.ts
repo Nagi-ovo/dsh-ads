@@ -37,8 +37,16 @@ const CURVE: readonly Anchor[] = [
   [10_000, 2],
 ]
 
-/** Invented size of the "national" user base the rank is drawn from. */
-const POPULATION = 8_000_000
+/**
+ * Invented size of the user base the rank is drawn from.
+ *
+ * Small on purpose. The rank and the percentile are the same fact stated twice,
+ * so they have to agree — and against millions of users, beating 99% of them
+ * still leaves tens of thousands ahead, which reads as a contradiction however
+ * correct the arithmetic is. A base this size makes "beat 99%" and "ranked
+ * two-thousandth" the same sentence.
+ */
+const POPULATION = 200_000
 
 /**
  * The percentile a load time "beats".
