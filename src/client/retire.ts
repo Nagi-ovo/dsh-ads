@@ -19,6 +19,13 @@ import { useEffect, useState } from 'react'
 /** Same-document notification that the layer has been retired. */
 const RETIRED = 'dsh-ads:retired'
 
+/**
+ * Module-private proof a retire event was dispatched by this bundle. A Symbol
+ * never survives serialisation and cannot be recreated by name, so an event
+ * carrying anything else — including no detail at all — is not ours.
+ */
+const TOKEN = Symbol('dsh-ads:retired')
+
 /** Whether the layer has been retired for this page load. */
 let retired = false
 
@@ -32,7 +39,7 @@ let retired = false
 export function retireAds(): void {
   if (retired) return
   retired = true
-  dispatchEvent(new CustomEvent(RETIRED))
+  dispatchEvent(new CustomEvent(RETIRED, { detail: TOKEN }))
 }
 
 /**
@@ -45,7 +52,10 @@ export function useRetired(): boolean {
     // Re-read on mount as well as on the event: a tree that mounts after the
     // button was pressed would otherwise start out showing ads again.
     setValue(retired)
-    const onRetired = () => setValue(true)
+    const onRetired = (event: Event) => {
+      if ((event as CustomEvent<unknown>).detail !== TOKEN) return
+      setValue(true)
+    }
     addEventListener(RETIRED, onRetired)
     return () => removeEventListener(RETIRED, onRetired)
   }, [])
