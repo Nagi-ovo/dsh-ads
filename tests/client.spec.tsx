@@ -55,8 +55,11 @@ const POPUPS: readonly AdCreative[] = [
 /** First-appearance and respawn delays for the corner cadence test. */
 const POPUP_FIRST_MS = 10_000
 
-/** The security alert opens before the pop-up and holds the same corner. */
-const SCARE_FIRST_MS = 5_000
+/** The benchmark opens the corner's programme. */
+const SPEED_FIRST_MS = 5_000
+
+/** The security alert follows the benchmark into the same corner. */
+const SCARE_DELAY_MS = 4_000
 const RESPAWN_MS = 60_000
 
 /**
@@ -76,13 +79,37 @@ function mount(corners = false): void {
         popupFirstDelayMs={corners ? POPUP_FIRST_MS : 0}
         posterFirstDelayMs={0}
         respawnMs={RESPAWN_MS}
-        scareFirstDelayMs={corners ? SCARE_FIRST_MS : 0}
+        speedFirstDelayMs={corners ? SPEED_FIRST_MS : 0}
+        scareDelayMs={corners ? SCARE_DELAY_MS : 0}
         scareHref="https://example.invalid/repo"
         chime={false}
       />,
     )
   })
-  act(() => { vi.advanceTimersByTime(3000) })
+  tick(3000)
+}
+
+/**
+ * Advance the fake clock in slices, letting React flush between them.
+ *
+ * One long jump runs every timer that falls inside it *before* React has a
+ * chance to process the state changes the earlier ones caused — so an effect
+ * that should have cancelled a later timer never gets the chance, and the test
+ * observes a sequence that cannot happen in real time.
+ *
+ * @param ms - total time to advance.
+ * @param slice - granularity, in ms.
+ */
+function tick(ms: number, slice = 500): void {
+  for (let done = 0; done < ms; done += slice) {
+    const step = Math.min(slice, ms - done)
+    act(() => { vi.advanceTimersByTime(step) })
+  }
+}
+
+/** Seconds currently on the alert's countdown, if one is showing. */
+function countdown(): number {
+  return Number(/还剩\s*(\d+)\s*秒/.exec(document.body.textContent ?? '')?.[1] ?? 0)
 }
 
 /** The corner pop-up's image, if one is on screen. */
@@ -99,6 +126,12 @@ function banners(): HTMLImageElement[] {
 function closeScare(): HTMLButtonElement | undefined {
   return [...document.querySelectorAll('button')]
     .find((b) => b.getAttribute('aria-label') === '关闭安全提示')
+}
+
+/** The benchmark window's real (tiny) close target, if it is up. */
+function closeSpeed(): HTMLButtonElement | undefined {
+  return [...document.querySelectorAll('button')]
+    .find((b) => b.getAttribute('aria-label') === '关闭跑分结果')
 }
 
 /** The layer's own "关闭所有广告" control, if it is mounted. */
@@ -120,7 +153,7 @@ describe('AdLayer', () => {
     expect(nukeButton()).toBeUndefined()
     // The growth ticker must not resurrect anything: this control is the one
     // honest exit, so a later tick bringing banners back would be the bug.
-    act(() => { vi.advanceTimersByTime(600_000) })
+    tick(600_000)
     expect(banners()).toHaveLength(0)
   })
 
@@ -144,32 +177,36 @@ describe('AdLayer', () => {
 
   it('opens the security alert first and makes the pop-up wait for the corner', () => {
     mount(true)
-    act(() => { vi.advanceTimersByTime(SCARE_FIRST_MS) })
+    tick(SPEED_FIRST_MS + SCARE_DELAY_MS)
     expect(document.body.textContent).toContain(LEVELS[0]!.headline)
     // Two windows stacked in one corner reads as a rendering fault, so the
     // pop-up must not arrive on its own schedule while the alert is up.
-    act(() => { vi.advanceTimersByTime(POPUP_FIRST_MS * 3) })
+    tick(POPUP_FIRST_MS * 3)
     expect(popup()).toBeUndefined()
     act(() => { closeScare()?.click() })
-    act(() => { vi.advanceTimersByTime(POPUP_FIRST_MS) })
+    tick(POPUP_FIRST_MS)
     expect(popup()).toBeDefined()
   })
 
   it('restarts the alert countdown instead of ever finishing it', () => {
     const first = LEVELS[0]!
     mount(true)
-    act(() => { vi.advanceTimersByTime(SCARE_FIRST_MS) })
-    expect(document.body.textContent).toContain(`${first.seconds} 秒`)
-    act(() => { vi.advanceTimersByTime(first.seconds * 1000) })
+    tick(SPEED_FIRST_MS + SCARE_DELAY_MS)
+    // Advance by what the alert actually has left, not by the level's full
+    // limit: it has been counting since it opened, and overshooting would sail
+    // past the failure notice into the next countdown.
+    const started = countdown()
+    expect(started).toBeGreaterThan(0)
+    tick(started * 1000)
     expect(document.body.textContent).toContain('清除失败')
     // Back to the top: the countdown is the joke, so it must never resolve.
-    act(() => { vi.advanceTimersByTime(2000) })
-    expect(document.body.textContent).toContain(`${first.seconds} 秒`)
+    tick(2500)
+    expect(countdown()).toBeGreaterThan(first.seconds - 5)
   })
 
   it('escalates when the alert is declined, and stops offering the way out', () => {
     mount(true)
-    act(() => { vi.advanceTimersByTime(SCARE_FIRST_MS) })
+    tick(SPEED_FIRST_MS + SCARE_DELAY_MS)
     const decline = () => [...document.querySelectorAll('button')]
       .find((b) => b.textContent === '暂不处理')
     expect(decline()).toBeDefined()
@@ -185,7 +222,7 @@ describe('AdLayer', () => {
     // The escalation drops the decline button, so 关闭所有广告 has to remain a
     // real exit or the joke turns into a trap.
     mount(true)
-    act(() => { vi.advanceTimersByTime(SCARE_FIRST_MS) })
+    tick(SPEED_FIRST_MS + SCARE_DELAY_MS)
     act(() => {
       [...document.querySelectorAll('button')].find((b) => b.textContent === '暂不处理')?.click()
     })
@@ -196,21 +233,21 @@ describe('AdLayer', () => {
   it('holds the corner pop-up on screen until it is closed, then brings it back', () => {
     mount(true)
     expect(popup()).toBeUndefined()
-    act(() => { vi.advanceTimersByTime(SCARE_FIRST_MS) })
+    tick(SPEED_FIRST_MS + SCARE_DELAY_MS)
     act(() => { closeScare()?.click() })
-    act(() => { vi.advanceTimersByTime(POPUP_FIRST_MS) })
+    tick(POPUP_FIRST_MS)
     expect(popup()).toBeDefined()
     // It must not retract on its own: an ad that leaves unprompted is a
     // notification, and the whole joke is that you have to hit the ✕.
-    act(() => { vi.advanceTimersByTime(5 * 60_000) })
+    tick(5 * 60_000)
     expect(popup()).toBeDefined()
     const close = [...document.querySelectorAll('button')]
       .find((b) => b.getAttribute('aria-label') === '关闭弹窗广告')
     act(() => { close?.click() })
     expect(popup()).toBeUndefined()
-    act(() => { vi.advanceTimersByTime(RESPAWN_MS / 2) })
+    tick(RESPAWN_MS / 2)
     expect(popup()).toBeUndefined()
-    act(() => { vi.advanceTimersByTime(RESPAWN_MS) })
+    tick(RESPAWN_MS)
     expect(popup()).toBeDefined()
   })
 
@@ -221,10 +258,10 @@ describe('AdLayer', () => {
       .find((b) => b.textContent?.includes('只留蓝鲸') || b.textContent?.includes('恢复全部广告'))
     act(() => { solo()?.click() })
     expect(banners()).toHaveLength(0)
-    act(() => { vi.advanceTimersByTime(30_000) })
+    tick(30_000)
     expect(banners()).toHaveLength(0)
     act(() => { solo()?.click() })
-    act(() => { vi.advanceTimersByTime(3000) })
+    tick(3000)
     expect(banners().length).toBeGreaterThan(0)
   })
 
@@ -252,9 +289,9 @@ describe('AdLayer', () => {
     act(() => { close?.click() })
     // Still short-handed while the cooldown runs: dismissing must buy real,
     // observable quiet, or the ✕ feels like it did nothing at all.
-    act(() => { vi.advanceTimersByTime(FAST.respawnDelayMs / 2) })
+    tick(FAST.respawnDelayMs / 2)
     expect(banners().length).toBe(before - 1)
-    act(() => { vi.advanceTimersByTime(FAST.respawnDelayMs) })
+    tick(FAST.respawnDelayMs)
     expect(banners().length).toBe(before)
   })
 })

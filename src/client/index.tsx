@@ -36,11 +36,14 @@ const DEFAULT_POSTER_FIRST_DELAY_MS = 20_000
 /** Delay before a closed pop-up or poster returns, in ms. */
 const DEFAULT_RESPAWN_MS = 60_000
 
-/** Delay before the fake security alert appears, in ms — first of everything. */
-const DEFAULT_SCARE_FIRST_DELAY_MS = 5_000
+/** Delay before the benchmark result appears, in ms — first of everything. */
+const DEFAULT_SPEED_FIRST_DELAY_MS = 5_000
 
-/** Where the alert's "立即修复" sends the user. */
+/** Where the alert's and the benchmark's calls to action send the user. */
 const SCARE_HREF = 'https://github.com/dsh-external/dsh-ads'
+
+/** Gap between the benchmark leaving and the security alert landing, in ms. */
+const DEFAULT_SCARE_DELAY_MS = 4_000
 
 /**
  * Dock entry: zero inline footprint, all output goes through the portal.
@@ -66,7 +69,8 @@ function AdDockEntry({ sessionId }: PropsRuntime<'conversation.input.dock'>) {
       popupFirstDelayMs={DEFAULT_POPUP_FIRST_DELAY_MS}
       posterFirstDelayMs={DEFAULT_POSTER_FIRST_DELAY_MS}
       respawnMs={DEFAULT_RESPAWN_MS}
-      scareFirstDelayMs={DEFAULT_SCARE_FIRST_DELAY_MS}
+      speedFirstDelayMs={DEFAULT_SPEED_FIRST_DELAY_MS}
+      scareDelayMs={DEFAULT_SCARE_DELAY_MS}
       scareHref={SCARE_HREF}
       chime
     />
