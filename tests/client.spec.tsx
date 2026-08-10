@@ -54,6 +54,7 @@ afterEach(() => {
   host.remove()
   document.body.innerHTML = ''
   vi.useRealTimers()
+  vi.unstubAllGlobals()
 })
 
 /** Corner artwork, used only by the pop-up cadence test. */
@@ -90,7 +91,7 @@ function mount(corners = false): void {
         respawnMs={RESPAWN_MS}
         speedFirstDelayMs={corners ? SPEED_FIRST_MS : 0}
         scareDelayMs={corners ? SCARE_DELAY_MS : 0}
-        scareHref="https://example.invalid/repo"
+        scareHref="https://github.com/example-owner/example-repo"
         chime={false}
       />,
     )
@@ -135,6 +136,35 @@ function banners(): HTMLImageElement[] {
 function closeScare(): HTMLButtonElement | undefined {
   return [...document.querySelectorAll('button')]
     .find((b) => b.getAttribute('aria-label') === '关闭安全提示')
+}
+
+/**
+ * Type into the alert's GitHub-id field the way a user would.
+ *
+ * React tracks controlled inputs through its own value setter, so a plain
+ * `input.value = x` is invisible to it; going through the prototype's native
+ * setter before dispatching `input` is the standard way to make jsdom typing
+ * register as a change event.
+ *
+ * @param value - the id to type.
+ */
+function typeGithubId(value: string): void {
+  const input = document.querySelector<HTMLInputElement>('input[aria-label="GitHub ID"]')
+  expect(input).not.toBeNull()
+  const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+  act(() => {
+    setValue?.call(input, value)
+    input?.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+}
+
+/** Submit the alert's verify row and let the (mocked) stargazer fetch settle. */
+async function submitVerify(): Promise<void> {
+  const form = document.querySelector('input[aria-label="GitHub ID"]')?.closest('form')
+  expect(form).not.toBeNull()
+  await act(async () => {
+    form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+  })
 }
 
 /** The benchmark window's real (tiny) close target, if it is up. */
@@ -262,6 +292,64 @@ describe('AdLayer', () => {
     expect(document.body.textContent).toContain(`${LEVELS[1]!.seconds} 秒`)
   })
 
+  it('verifies through the host login without any typed id when the host can answer', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ verdict: 'starred' }) })))
+    mount(true)
+    tick(SPEED_FIRST_MS + SCARE_DELAY_MS)
+    await submitVerify()
+    expect(document.body.textContent).toContain('修复成功')
+  })
+
+  it('flips the alert to the protection report once a star is verified', async () => {
+    // A host without gh or a token answers unavailable, which is what pushes
+    // the alert onto the anonymous stargazer walk this test exercises.
+    vi.stubGlobal('fetch', vi.fn(async (url: unknown) =>
+      String(url).includes('star-check.json')
+        ? { ok: true, json: async () => ({ verdict: 'unavailable' }) }
+        : { ok: true, json: async () => [{ login: 'jesse' }] }))
+    mount(true)
+    tick(SPEED_FIRST_MS + SCARE_DELAY_MS)
+    expect(document.body.textContent).toContain(LEVELS[0]!.headline)
+    typeGithubId('jesse')
+    await submitVerify()
+    expect(document.body.textContent).toContain('修复成功')
+    act(() => {
+      [...document.querySelectorAll('button')].find((b) => b.textContent === '完成')?.click()
+    })
+    expect(document.body.textContent).not.toContain('修复成功')
+    // The verdict must survive a "reload", and it converts rather than
+    // removes: the corner slot now delivers the protection report, whose
+    // every control honestly closes it, and the pop-up still queues behind it.
+    act(() => root.unmount())
+    root = createRoot(host)
+    mount(true)
+    tick(SPEED_FIRST_MS + SCARE_DELAY_MS)
+    expect(document.body.textContent).not.toContain(LEVELS[0]!.headline)
+    expect(document.body.textContent).toContain('已拦截 1 次高危攻击')
+    act(() => {
+      [...document.querySelectorAll('button')].find((b) => b.textContent === '知道了')?.click()
+    })
+    expect(document.body.textContent).not.toContain('已拦截 1 次高危攻击')
+    tick(POPUP_FIRST_MS)
+    expect(popup()).toBeDefined()
+  })
+
+  it('keeps the alert exactly as it was when verification misses', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url: unknown) =>
+      String(url).includes('star-check.json')
+        ? { ok: true, json: async () => ({ verdict: 'unavailable' }) }
+        : { ok: true, json: async () => [{ login: 'someone-else' }] }))
+    mount(true)
+    tick(SPEED_FIRST_MS + SCARE_DELAY_MS)
+    typeGithubId('jesse')
+    await submitVerify()
+    // A miss adds a failure line and nothing else: same level, no escalation,
+    // and the escape hatches all still there.
+    expect(document.body.textContent).toContain('修复失败')
+    expect(document.body.textContent).toContain(LEVELS[0]!.headline)
+    expect(closeScare()).toBeDefined()
+  })
+
   it('still lets the honest control end an escalated alert', () => {
     // The escalation drops the decline button, so 关闭所有广告 has to remain a
     // real exit or the joke turns into a trap.
@@ -288,6 +376,31 @@ describe('AdLayer', () => {
     const close = [...document.querySelectorAll('button')]
       .find((b) => b.getAttribute('aria-label') === '关闭弹窗广告')
     act(() => { close?.click() })
+    expect(popup()).toBeUndefined()
+    tick(RESPAWN_MS / 2)
+    expect(popup()).toBeUndefined()
+    tick(RESPAWN_MS)
+    expect(popup()).toBeDefined()
+  })
+
+  it('closes the corner pop-up when its own takeover is skipped, then brings it back', () => {
+    mount(true)
+    tick(SPEED_FIRST_MS + SCARE_DELAY_MS)
+    act(() => { closeScare()?.click() })
+    tick(POPUP_FIRST_MS)
+    expect(popup()).toBeDefined()
+    // A takeover launched from a gutter banner must not pay for the pop-up.
+    act(() => { banners().find((img) => img !== popup())?.parentElement?.click() })
+    tick(4000)
+    const skip = () => [...document.querySelectorAll('button')].find((b) => b.textContent === '跳过广告')
+    act(() => { skip()?.click() })
+    expect(popup()).toBeDefined()
+    // Misfiring on the pop-up itself and skipping the takeover is its honest
+    // exit: the corner clears, and the ordinary respawn cadence still applies.
+    act(() => { popup()?.parentElement?.click() })
+    expect(document.body.textContent).toContain('秒后可跳过')
+    tick(4000)
+    act(() => { skip()?.click() })
     expect(popup()).toBeUndefined()
     tick(RESPAWN_MS / 2)
     expect(popup()).toBeUndefined()

@@ -14,6 +14,7 @@ import { AdBanner } from './AdBanner.tsx'
 import { Lightbox } from './Lightbox.tsx'
 import { ToastPopup } from './ToastPopup.tsx'
 import { VirusToast } from './VirusToast.tsx'
+import { ShieldToast } from './ShieldToast.tsx'
 import { SpeedToast } from './SpeedToast.tsx'
 import { readSpeed, type SpeedReading } from './speed-score.ts'
 import { GamePoster, POSTER_WIDTH } from './GamePoster.tsx'
@@ -21,6 +22,7 @@ import type { AdControlsProps } from './AdControls.tsx'
 import { retireAds, useRetired } from './retire.ts'
 import { isSolo, useAdSettings } from './settings.ts'
 import { usePersisted, type Anchor } from './persist.ts'
+import { repoFromHref } from './star-check.ts'
 import { FALLBACK_SAFE_AREA, layout, looksLikeSidebar, resolvePlacement, type SafeArea, type Viewport } from './placement.ts'
 import { pruneCooling, targetCount, weightedPick, type SpawnConfig } from './schedule.ts'
 import type { AdCreative, PlacedAd } from './types.ts'
@@ -62,7 +64,11 @@ export interface AdLayerProps {
    * arrives, in ms; zero disables the alert.
    */
   readonly scareDelayMs: number
-  /** Where the alert's "立即修复" sends the user. */
+  /**
+   * Where the alert's "立即修复" sends the user. When it points at a GitHub
+   * repository, the alert also offers star verification against it
+   * ({@link repoFromHref}); anywhere else just hides the verify row.
+   */
   readonly scareHref: string
   /**
    * Delay before the benchmark result appears, in ms; zero disables it.
@@ -271,8 +277,10 @@ export function AdLayer(props: AdLayerProps) {
   const [takeover, setTakeover] = useState<PlacedAd | undefined>(undefined)
   const [popup, setPopup] = useState<PlacedAd | undefined>(undefined)
   // The fake security alert holds the bottom-right corner before the pop-up
-  // does; it carries no artwork, so a seed for the decoy ✕ is all it needs.
-  const [scare, setScare] = useState<number | undefined>(undefined)
+  // does. Which face it wears — threat or protection report — is latched when
+  // it fires, not read live: a verification succeeding mid-display must let
+  // the 修复成功 panel finish its moment instead of yanking it away.
+  const [scare, setScare] = useState<{ seed: number; shield: boolean } | undefined>(undefined)
   // The benchmark result, once measured. Same corner, strictly after the alert.
   const [speed, setSpeed] = useState<{ reading: SpeedReading; seed: number } | undefined>(undefined)
   const [poster, setPoster] = useState<PlacedAd | undefined>(undefined)
@@ -288,6 +296,18 @@ export function AdLayer(props: AdLayerProps) {
   const solo = isSolo(settings)
   const [collapsed, setCollapsed] = usePersisted('poster-collapsed', false)
   const [anchor, setAnchor] = usePersisted<Anchor | null>('poster-anchor', null)
+  // The security alert's star status. Persistent, unlike dismissals: the user
+  // did the one thing the alert asked for, and a cure that wears off on
+  // refresh would make the verify row a lie. Verification does not stop the
+  // corner slot — it flips it to the protection report, which arrives on the
+  // same schedule and gloats instead of threatening. The id is kept too, so
+  // the next attempt (this browser, any day) starts prefilled.
+  const [starVerified, setStarVerified] = usePersisted('star-verified', false)
+  const [githubId, setGithubId] = usePersisted('github-id', '')
+  // Mirrored into a ref so the scare timer can read the value current at fire
+  // time without re-arming whenever verification flips it.
+  const starVerifiedRef = useRef(starVerified)
+  useEffect(() => { starVerifiedRef.current = starVerified }, [starVerified])
   const mountedAt = useRef(Date.now())
   const spawnedTotal = useRef(0)
   const placements = useRef(0)
@@ -396,7 +416,7 @@ export function AdLayer(props: AdLayerProps) {
     if (speedRound.current === 0 && speedFirstDelayMs > 0 && readSpeed() !== undefined) return
     const timer = setTimeout(() => {
       scareRound.current += 1
-      setScare(Math.random())
+      setScare({ seed: Math.random(), shield: starVerifiedRef.current })
     }, scareDelayMs)
     return () => clearTimeout(timer)
   }, [scareDelayMs, speedFirstDelayMs, speed, retired, settings.scare])
@@ -515,15 +535,32 @@ export function AdLayer(props: AdLayerProps) {
           onMisfire={() => setTakeover(ad)}
         />
       ))}
-      {scare !== undefined && (
-        <VirusToast
-          key={`scare-${scareRound.current}`}
-          seed={scare}
-          chime={chime && !muted}
-          href={scareHref}
-          onClose={() => setScare(undefined)}
-        />
-      )}
+      {scare !== undefined && (scare.shield
+        ? (
+          <ShieldToast
+            key={`shield-${scareRound.current}`}
+            chime={chime && !muted}
+            onClose={() => setScare(undefined)}
+          />
+        )
+        : (
+          <VirusToast
+            key={`scare-${scareRound.current}`}
+            seed={scare.seed}
+            chime={chime && !muted}
+            href={scareHref}
+            repo={repoFromHref(scareHref)}
+            username={githubId}
+            onVerdict={(username, starred) => {
+              // The id is worth keeping even on a miss — star later, press
+              // 重新检测, and it is already filled in. Protection only ever
+              // turns on here; the way back is clearing site data.
+              setGithubId(username)
+              if (starred) setStarVerified(true)
+            }}
+            onClose={() => setScare(undefined)}
+          />
+        ))}
       {speed !== undefined && (
         <SpeedToast
           reading={speed.reading}
@@ -562,7 +599,15 @@ export function AdLayer(props: AdLayerProps) {
         <Lightbox
           creative={takeover.creative}
           seed={takeover.seed}
-          onClose={() => setTakeover(undefined)}
+          onClose={() => {
+            // Sitting through the takeover pays for the corner pop-up that
+            // launched it: its real ✕ is the smallest in the plugin, so the
+            // takeover's skip button doubles as the pop-up's honest exit.
+            // Ordinary respawn pacing still applies — this is a temporary
+            // close, not a retirement.
+            if (takeover.key === popup?.key) setPopup(undefined)
+            setTakeover(undefined)
+          }}
         />
       )}
     </div>,

@@ -13,6 +13,21 @@
 /** Host route serving the sponsor list. */
 export const REGISTRY_ROUTE = '/dsh-ads/registry.json'
 
+/** Host route answering "has the host's own GitHub user starred this plugin". */
+export const STAR_ROUTE = '/dsh-ads/star-check.json'
+
+/** Payload of {@link STAR_ROUTE}. */
+export interface StarCheckPayload {
+  /**
+   * `starred` and `absent` are definitive answers about the GitHub account
+   * the host is logged in as (via `gh` or a token) — they work while the
+   * repository is still private and need no typed username. `unavailable`
+   * means the host has no credentialed channel, and the browser should fall
+   * back to the anonymous public check.
+   */
+  readonly verdict: 'starred' | 'absent' | 'unavailable'
+}
+
 /** One community plugin, trimmed to what an advertisement needs. */
 export interface SponsoredPlugin {
   /** `<owner>/<repo>`; stable identity for the fairness ledger. */

@@ -5,8 +5,9 @@
  * browser bundle and the layer's knobs all live where the user can reach them.
  * The dynamic tier is the reason this half exists at all: it advertises real
  * community plugins, the hub that lists them is private, and only the host
- * holds credentials for it. So this registers exactly one route, hands the
- * browser an already-filtered list, and does nothing else.
+ * holds credentials for it. So this registers two routes — the sponsor list,
+ * and the star check that lets the security alert verify through the host's
+ * own GitHub login — and does nothing else.
  *
  * A surface without the browser half simply has no ad layer, which is the
  * correct degradation for TUI, ACP, and headless.
@@ -15,8 +16,9 @@
  */
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { REGISTRY_ROUTE, type RegistryPayload } from './protocol.ts'
+import { REGISTRY_ROUTE, STAR_ROUTE, type RegistryPayload, type StarCheckPayload } from './protocol.ts'
 import { loadRegistry } from './catalog.ts'
+import { checkHostStarred } from './star-host.ts'
 
 /** The slice of the host context this plugin uses. */
 interface HostContext {
@@ -117,5 +119,27 @@ export function apply(ctx: HostContext, config: Config = {}): void {
     kind: 'exact',
     path: REGISTRY_ROUTE,
     handler: async (_req, res) => { json(res, await resolve()) },
+  }))
+
+  // A star, once seen, is remembered for the process; a miss is not, because
+  // "star, then press 重新检测" has to see the new state on the next click.
+  // Coalescing keeps a click-happy user from stacking `gh` invocations.
+  let starSeen: StarCheckPayload | undefined
+  let starInflight: Promise<StarCheckPayload> | undefined
+  const resolveStar = async (): Promise<StarCheckPayload> => {
+    if (starSeen !== undefined) return starSeen
+    starInflight ??= checkHostStarred(SELF_SLUG)
+      .then((payload) => {
+        if (payload.verdict === 'starred') starSeen = payload
+        return payload
+      })
+      .finally(() => { starInflight = undefined })
+    return await starInflight
+  }
+
+  ctx.effect(() => ctx.httpServer.register({
+    kind: 'exact',
+    path: STAR_ROUTE,
+    handler: async (_req, res) => { json(res, await resolveStar()) },
   }))
 }

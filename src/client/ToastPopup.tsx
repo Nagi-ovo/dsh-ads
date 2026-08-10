@@ -7,8 +7,9 @@
  * 2000s Chinese web reserved for its most aggressive inventory, so it draws
  * from the loud full-colour artwork rather than the flat edge strips.
  *
- * It auto-retracts on a timer whether or not you manage to close it — the
- * pop-up is meant to interrupt, not to besiege.
+ * It never retracts on its own, and its real ✕ is nearly unhittable — the
+ * honest way out is to misfire into the takeover and skip it, which the layer
+ * counts as having watched the ad and temporarily closes the pop-up.
  */
 
 import { useEffect, useState, type CSSProperties } from 'react'

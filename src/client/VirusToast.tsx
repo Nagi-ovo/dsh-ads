@@ -16,12 +16,22 @@
  * alert that read as genuine would not be a joke about scareware, it would be
  * scareware.
  *
+ * The one real cure: the 验证修复 row. It asks the host first, which answers
+ * through its own GitHub login (`gh` or a token) and needs no typed id; a
+ * host without credentials falls back to anonymously walking the public
+ * stargazer list for the id in the field. A hit reports 修复成功 with an
+ * honestly-sized button and permanently flips this browser's corner alert to
+ * the protection report ([ShieldToast](./ShieldToast.tsx)); a miss changes
+ * nothing — no escalation, the failure path stays exactly as annoying as
+ * before, never more.
+ *
  * @module
  */
 
 import { useEffect, useState, type CSSProperties } from 'react'
 import { resolveHitbox } from './hitbox.ts'
 import { playChime } from './sound.ts'
+import { checkHostStar, checkStarred } from './star-check.ts'
 
 /** Side of the alert's real close hitbox, in CSS pixels. */
 const TOAST_HITBOX_PX = 5
@@ -109,6 +119,18 @@ export interface VirusToastProps {
   readonly chime: boolean
   /** Where "立即修复" sends the user. */
   readonly href: string
+  /**
+   * `owner/repo` whose stargazers can lift the alert, or undefined to hide
+   * the 验证修复 row entirely.
+   */
+  readonly repo: string | undefined
+  /** Last GitHub id the user submitted, prefilled into the verify row. */
+  readonly username: string
+  /**
+   * Called after every completed check with the id tried and whether it
+   * counts as starred, so the layer can remember both.
+   */
+  readonly onVerdict: (username: string, starred: boolean) => void
   /** Called when the real hitbox is hit, or the user finally "fixes" it. */
   readonly onClose: () => void
 }
@@ -163,18 +185,61 @@ const fixButtonStyle: CSSProperties = {
   lineHeight: '18px',
 }
 
+/** The verify row's text field — plain and honestly usable, unlike every ✕. */
+const idInputStyle: CSSProperties = {
+  flex: 1,
+  minWidth: 0,
+  padding: '5px 8px',
+  border: '1px solid #b9b9b4',
+  borderRadius: 3,
+  background: '#fff',
+  color: '#333',
+  fontSize: 12,
+  fontFamily: 'system-ui, sans-serif',
+}
+
+/** How far one verification attempt has got. */
+type VerifyPhase = 'idle' | 'checking' | 'starred' | 'absent' | 'missing' | 'need-id' | 'error'
+
 /**
  * Draw the alert.
  * @param props - see {@link VirusToastProps}.
  * @returns the fixed-position alert window.
  */
-export function VirusToast({ seed, chime, href, onClose }: VirusToastProps) {
+export function VirusToast({ seed, chime, href, repo, username, onVerdict, onClose }: VirusToastProps) {
   const [entered, setEntered] = useState(false)
   const [rung, setRung] = useState(0)
   const level = LEVELS[Math.min(rung, LEVELS.length - 1)] as Level
   const [left, setLeft] = useState(level.seconds)
   const [failed, setFailed] = useState(false)
+  const [id, setId] = useState(username)
+  const [phase, setPhase] = useState<VerifyPhase>('idle')
   const hit = resolveHitbox(seed, TOAST_HITBOX_PX)
+
+  /** Run one verification: the host's own GitHub login first, anonymous fallback. */
+  const verify = async (): Promise<void> => {
+    if (repo === undefined || phase === 'checking') return
+    const trimmed = id.trim()
+    setPhase('checking')
+    const host = await checkHostStar()
+    if (host !== 'unavailable') {
+      onVerdict(trimmed, host === 'starred')
+      setPhase(host)
+      return
+    }
+    // No credentialed channel on this machine: the anonymous walk needs a
+    // typed id before it can look for anyone.
+    if (trimmed === '') {
+      setPhase('need-id')
+      return
+    }
+    const verdict = await checkStarred(repo, trimmed)
+    // `overflow` honours the claim: a list too long to page through must not
+    // punish the people it can no longer prove.
+    const starred = verdict === 'starred' || verdict === 'overflow'
+    onVerdict(trimmed, starred)
+    setPhase(starred ? 'starred' : verdict === 'absent' || verdict === 'missing' ? verdict : 'error')
+  }
 
   useEffect(() => {
     if (chime) playChime()
@@ -236,9 +301,10 @@ export function VirusToast({ seed, chime, href, onClose }: VirusToastProps) {
         pointerEvents: 'auto',
         // Entrance and escalation are different animations on the same box, so
         // only one of them can own `transform` at a time: the slide-in wins
-        // until it has finished, then the shake takes over.
+        // until it has finished, then the shake takes over. A verified window
+        // stops shaking: the cure worked, the theatrics are over.
         ...(entered
-          ? level.shake
+          ? level.shake && phase !== 'starred'
             ? { animation: 'dsh-ads-shake 0.42s infinite, dsh-ads-alarm 0.6s infinite' }
             : {}
           : { transform: 'translateY(260px)', transition: 'transform 420ms cubic-bezier(0.16, 1, 0.3, 1)' }),
@@ -280,7 +346,22 @@ export function VirusToast({ seed, chime, href, onClose }: VirusToastProps) {
           />
         </span>
       </div>
-      <div style={bodyStyle}>
+      {phase === 'starred' && (
+        <div style={bodyStyle}>
+          <div style={{ textAlign: 'center', fontSize: 14, fontWeight: 700, color: '#1d7a2f', margin: '8px 0 4px' }}>
+            ✅ 修复成功
+          </div>
+          <div style={{ textAlign: 'center', color: '#555' }}>
+            已检测到您的 Star 授权，专属防护已开启：下次它再来，会被自动拦截。
+          </div>
+          {/* The one full-width, honestly clickable close in the plugin: the
+              user did the thing, so the joke is over. */}
+          <button type="button" style={{ ...buttonStyle, width: '100%', marginTop: 10 }} onClick={onClose}>
+            完成
+          </button>
+        </div>
+      )}
+      {phase !== 'starred' && <div style={bodyStyle}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
           <span aria-hidden="true" style={{ fontSize: 26, lineHeight: 1 }}>☣️</span>
           <div>
@@ -306,6 +387,50 @@ export function VirusToast({ seed, chime, href, onClose }: VirusToastProps) {
             ? '清除失败，正在重新计时…'
             : <>{level.countdownLabel} <strong style={{ fontSize: 15, color: '#b8231a' }}>{left}</strong> 秒</>}
         </div>
+        {repo !== undefined && (
+          <form
+            onSubmit={(event) => {
+              event.preventDefault()
+              void verify()
+            }}
+            style={{ display: 'flex', gap: 6, marginBottom: 8 }}
+          >
+            <input
+              value={id}
+              onChange={(event) => setId(event.target.value)}
+              placeholder="输入您的 GitHub ID 领取专属修复"
+              aria-label="GitHub ID"
+              style={idInputStyle}
+            />
+            <button
+              type="submit"
+              style={{ ...buttonStyle, flex: '0 0 auto', padding: '7px 10px' }}
+              disabled={phase === 'checking'}
+            >
+              {phase === 'checking' ? '检测中…' : username === '' ? '验证修复' : '重新检测'}
+            </button>
+          </form>
+        )}
+        {phase === 'absent' && (
+          <div style={{ marginBottom: 8, color: '#b8231a' }}>
+            修复失败：未在官方渠道检测到您的授权，请先 Star 再重新检测
+          </div>
+        )}
+        {phase === 'missing' && (
+          <div style={{ marginBottom: 8, color: '#b8231a' }}>
+            修复通道尚未开通：仓库还未公开，本机登录 gh 后可提前验证
+          </div>
+        )}
+        {phase === 'need-id' && (
+          <div style={{ marginBottom: 8, color: '#b8231a' }}>
+            本机没有可用的 GitHub 登录，请填写 GitHub ID 走公开验证
+          </div>
+        )}
+        {phase === 'error' && (
+          <div style={{ marginBottom: 8, color: '#b8231a' }}>
+            修复服务暂时连不上，请稍后重试
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 8 }}>
           <a
             href={href}
@@ -322,7 +447,7 @@ export function VirusToast({ seed, chime, href, onClose }: VirusToastProps) {
             </button>
           )}
         </div>
-      </div>
+      </div>}
     </div>
   )
 }
