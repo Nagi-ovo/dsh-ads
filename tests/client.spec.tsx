@@ -18,6 +18,8 @@ import type { SpawnConfig } from '../src/client/schedule.ts'
 import { LEVELS } from '../src/client/VirusToast.tsx'
 import { clearPersisted } from '../src/client/persist.ts'
 import { AdsSection } from '../src/client/AdsSection.tsx'
+import { GamePoster } from '../src/client/GamePoster.tsx'
+import { DEFAULT_SETTINGS } from '../src/client/settings.ts'
 
 /**
  * Two flat banners: short enough that jsdom's 1024×768 viewport fits the whole
@@ -345,5 +347,73 @@ describe('AdLayer', () => {
     expect(banners().length).toBe(before - 1)
     tick(FAST.respawnDelayMs)
     expect(banners().length).toBe(before)
+  })
+})
+
+describe('GamePoster settings popover', () => {
+  /** Artwork stub; the popover behaviour does not depend on the image. */
+  const CREATIVE: AdCreative = {
+    id: 'poster', width: 300, height: 480, shape: 'tall', weight: 1, alt: '海报', src: 'data:,',
+  }
+
+  /** Mount the poster with its menu closed. */
+  function mountPoster(): void {
+    act(() => {
+      root.render(
+        <GamePoster
+          creative={CREATIVE}
+          seed={0.4}
+          chime={false}
+          anchor={{ left: 12, bottom: 12 }}
+          onMove={() => {}}
+          collapsed={false}
+          onToggleCollapse={() => {}}
+          onClose={() => {}}
+          onMisfire={() => {}}
+          controls={{ settings: DEFAULT_SETTINGS, onChange: () => {}, onNuke: () => {} }}
+        />,
+      )
+    })
+  }
+
+  /** The ⚙ that opens the menu. */
+  function gear(): HTMLButtonElement | undefined {
+    return [...document.querySelectorAll('button')]
+      .find((b) => b.getAttribute('aria-label') === '广告设置')
+  }
+
+  /** Whether the menu is on screen. */
+  function menuOpen(): boolean {
+    return document.body.textContent?.includes('显示哪些广告') === true
+  }
+
+  it('closes when the click lands anywhere else', () => {
+    mountPoster()
+    act(() => { gear()?.click() })
+    expect(menuOpen()).toBe(true)
+    // A popover whose only exit is the control that opened it is the same trap
+    // as the decoy ✕, and the honest controls do not play that game.
+    // A plain Event, not a PointerEvent: jsdom does not implement the latter,
+    // and the handler only reads `target`.
+    act(() => {
+      document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+    })
+    expect(menuOpen()).toBe(false)
+  })
+
+  it('stays open while the click is inside it', () => {
+    mountPoster()
+    act(() => { gear()?.click() })
+    act(() => {
+      gear()?.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+    })
+    expect(menuOpen()).toBe(true)
+  })
+
+  it('closes on Escape', () => {
+    mountPoster()
+    act(() => { gear()?.click() })
+    act(() => { dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })) })
+    expect(menuOpen()).toBe(false)
   })
 })

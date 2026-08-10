@@ -8,7 +8,7 @@
  * are honest controls with honest hitboxes. Only the ✕ lies.
  */
 
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { AdSettingsMenu, type AdControlsProps } from './AdControls.tsx'
 import type { AdCreative } from './types.ts'
 import type { Anchor } from './persist.ts'
@@ -107,6 +107,7 @@ export function GamePoster(props: GamePosterProps) {
   const { creative, seed, chime, anchor, onMove, collapsed, onToggleCollapse, onClose, onMisfire } = props
   const [entered, setEntered] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const settingsRef = useRef<HTMLSpanElement | null>(null)
   const hit = resolveHitbox(seed, POSTER_HITBOX_PX)
   const height = POSTER_WIDTH * (creative.height / creative.width)
   const drag = useDrag(anchor, onMove, { width: POSTER_WIDTH, height: (collapsed ? 0 : height) + CHROME_H })
@@ -116,6 +117,30 @@ export function GamePoster(props: GamePosterProps) {
     const raise = setTimeout(() => setEntered(true), 16)
     return () => clearTimeout(raise)
   }, [chime])
+
+  // Clicking away closes the menu, the way every menu does. Without it the
+  // panel sat over the artwork until the user found the ⚙ again — and the ⚙ is
+  // deliberately small. Escape closes it too; a popover with exactly one exit
+  // is the same trap as the ✕, and the honest controls do not play that game.
+  useEffect(() => {
+    if (!settingsOpen) return
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target
+      if (target instanceof Node && settingsRef.current?.contains(target) === true) return
+      setSettingsOpen(false)
+    }
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSettingsOpen(false)
+    }
+    // Capture phase: the poster's own handlers stop propagation, so a bubbling
+    // listener would never see a click that landed on the artwork.
+    addEventListener('pointerdown', onPointerDown, true)
+    addEventListener('keydown', onKey)
+    return () => {
+      removeEventListener('pointerdown', onPointerDown, true)
+      removeEventListener('keydown', onKey)
+    }
+  }, [settingsOpen])
   return (
     <div
       style={{
@@ -140,7 +165,7 @@ export function GamePoster(props: GamePosterProps) {
       >
         <span>★ 火爆开服 ★</span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <span style={{ position: 'relative', display: 'flex' }}>
+          <span style={{ position: 'relative', display: 'flex' }} ref={settingsRef}>
             <button
               type="button"
               style={gearButtonStyle}
