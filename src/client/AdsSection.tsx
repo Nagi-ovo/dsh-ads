@@ -17,30 +17,34 @@
  */
 
 import type { CSSProperties, ReactNode } from 'react'
-import {
-  IconDataOutline16,
-  IconNewChatOutline16,
-  IconPanelLeftOutline16,
-  IconPlayOutline16,
-  IconRightUpOutline16,
-  IconWarningOutline16,
-} from '@deepseek-ai/dsh-client-ui-primitives'
+// Per-icon paths, not the barrel: importing from `lucide-react` pulls its
+// whole index through the CJS browser build and added ~750 KB for seven
+// glyphs. These resolve to one module each.
+import BellRing from 'lucide-react/dist/esm/icons/bell-ring.mjs'
+import Gamepad2 from 'lucide-react/dist/esm/icons/gamepad-2.mjs'
+import Gauge from 'lucide-react/dist/esm/icons/gauge.mjs'
+import Newspaper from 'lucide-react/dist/esm/icons/newspaper.mjs'
+import PanelsLeftRight from 'lucide-react/dist/esm/icons/panels-left-right.mjs'
+import ShieldAlert from 'lucide-react/dist/esm/icons/shield-alert.mjs'
+import Volume2 from 'lucide-react/dist/esm/icons/volume-2.mjs'
 import { PLACEMENTS, useAdSettings, type AdSettings } from './settings.ts'
 
 /**
- * The shell's own `ic_ds_*` glyphs, one per row.
+ * One glyph per row, each one naming what the row actually is.
  *
- * Not the emoji the in-ad menu uses: this page sits between two first-party
- * ones, and emoji next to the host's line icons is the single detail that made
- * it read as bolted on.
+ * Lucide rather than the shell's own `ic_ds_*` set: that set is built for the
+ * app's own vocabulary — chat, branch, skill, think — and has nothing for a
+ * toast, a benchmark, a game poster, or a volume control. Reaching for its
+ * nearest-looking glyph produced a row of icons that meant nothing, which is
+ * worse than no icons at all.
  */
 const ICONS: Readonly<Record<string, ReactNode>> = {
-  gutter: <IconPanelLeftOutline16 />,
-  feed: <IconNewChatOutline16 />,
-  popup: <IconRightUpOutline16 />,
-  speed: <IconDataOutline16 />,
-  scare: <IconWarningOutline16 />,
-  poster: <IconPlayOutline16 />,
+  gutter: <PanelsLeftRight size={17} />,
+  feed: <Newspaper size={17} />,
+  popup: <BellRing size={17} />,
+  speed: <Gauge size={17} />,
+  scare: <ShieldAlert size={17} />,
+  poster: <Gamepad2 size={17} />,
 }
 
 /** What each switch actually turns off, in the user's terms. */
@@ -180,10 +184,10 @@ export function AdsSection() {
       ))}
       <div style={rowStyle}>
         <div>
-          {/* No glyph: the set has no speaker, and reusing a placement's icon
-              here would say these rows are the same kind of thing. The gap
-              reads as the separation it actually is. */}
-          <div style={labelStyle}>提示音</div>
+          <div style={labelStyle}>
+            <span style={iconStyle} aria-hidden="true"><Volume2 size={17} /></span>
+            提示音
+          </div>
           <div style={blurbStyle}>弹窗和海报出现时的「叮」一声，由 Web Audio 现场合成</div>
         </div>
         <Toggle
