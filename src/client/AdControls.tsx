@@ -1,14 +1,10 @@
 /**
- * The settings menu, and the bar that opens it when the poster is away.
+ * The settings menu inside the poster, and the floating "enough" button.
  *
- * One switch per placement, plus the two things that are not placements: mute,
- * and the one button that really does end the layer. Rendered in the poster's
- * own oxblood-and-gold chrome, because a tasteful system menu hanging off a
- * 火爆开服 title bar read like a different application had leaked in.
- *
- * The menu has two hosts and must be reachable from both: the poster's ⚙ when
- * it is on screen, and the bottom bar's ⚙ when it is not. Switching the poster
- * off through its own menu would otherwise strand every other switch.
+ * The menu is the joke version: a real control panel living inside an
+ * advertisement, in the poster's own oxblood-and-gold chrome. The findable
+ * version is the page this plugin contributes to the host's settings dialog —
+ * see [AdsSection.tsx](./AdsSection.tsx). Both write the same stored object.
  *
  * @module
  */
@@ -151,30 +147,19 @@ const barButtonStyle: CSSProperties = {
 }
 
 /**
- * The fallback bar, for when the poster is not on screen to host the ⚙.
+ * The floating escape hatch.
  *
- * @param props - see {@link AdControlsProps}.
- * @returns the bar, with its own popover.
+ * Deliberately one button. The placement switches moved to the host's settings
+ * dialog the moment there was a real page for them, and a second copy floating
+ * over the transcript is just clutter. What cannot move there is this: it is a
+ * "not right now" that lasts until reload, and an unpersisted action sitting
+ * among persisted switches would read as a setting that quietly forgets itself.
+ *
+ * @param props - see {@link AdControlsProps}; only `onNuke` is used.
+ * @returns the bar.
  */
-export function AdControls(props: AdControlsProps) {
-  const [open, setOpen] = useState(false)
+export function AdControls({ onNuke }: AdControlsProps) {
   return (
-    <div style={{ position: 'relative', display: 'flex', gap: 4 }}>
-      {open && (
-        <div style={{ position: 'absolute', bottom: '100%', left: 0, marginBottom: 6 }}>
-          <AdSettingsMenu {...props} onPick={() => setOpen(false)} />
-        </div>
-      )}
-      <button
-        type="button"
-        style={barButtonStyle}
-        aria-label="广告设置"
-        aria-expanded={open}
-        onClick={() => setOpen((current) => !current)}
-      >
-        ⚙ 广告设置
-      </button>
-      <button type="button" style={barButtonStyle} onClick={props.onNuke}>🚫 关闭所有广告</button>
-    </div>
+    <button type="button" style={barButtonStyle} onClick={onNuke}>🚫 关闭所有广告</button>
   )
 }

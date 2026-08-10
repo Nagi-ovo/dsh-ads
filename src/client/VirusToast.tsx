@@ -80,10 +80,14 @@ export const LEVELS: readonly Level[] = [
   },
   {
     width: 400,
-    title: '⚠⚠⚠ 紧急：幻觉正在扩散 ⚠⚠⚠',
-    headline: '感染已扩散至全部会话',
+    title: '⚠⚠⚠ 紧急：Gemini 正在扩散 ⚠⚠⚠',
+    headline: 'Gemini 感染已扩散至全部会话',
     subhead: '你刚才点了「暂不处理」，幻觉率还在涨',
     rows: [
+      // The virus name is repeated here on purpose: the escalated window is
+      // the one people actually read, and "感染已扩散" alone never said what
+      // had spread.
+      ['病毒名', 'Gemini.Worm.Nano'],
       ['当前症状', '开始编不存在的 API'],
       ['当前症状', '编错了还特别自信'],
       ['当前症状', '让它改 A，它去改了 B'],

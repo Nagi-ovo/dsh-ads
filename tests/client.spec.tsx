@@ -17,6 +17,7 @@ import type { AdCreative } from '../src/client/types.ts'
 import type { SpawnConfig } from '../src/client/schedule.ts'
 import { LEVELS } from '../src/client/VirusToast.tsx'
 import { clearPersisted } from '../src/client/persist.ts'
+import { AdsSection } from '../src/client/AdsSection.tsx'
 
 /**
  * Two flat banners: short enough that jsdom's 1024×768 viewport fits the whole
@@ -138,17 +139,26 @@ function closeSpeed(): HTMLButtonElement | undefined {
     .find((b) => b.getAttribute('aria-label') === '关闭跑分结果')
 }
 
-/** Open (or close) the settings popover from whichever host is showing its ⚙. */
-function openSettings(): void {
+/**
+ * Mount the host's settings page in its own React root and flip one switch.
+ *
+ * The switches live in the settings dialog, a different tree from the layer;
+ * driving them from here is the only way to test what a user actually does,
+ * and it exercises the storage broadcast that keeps the two trees agreeing.
+ *
+ * @param label - the switch's accessible name.
+ */
+function flipSwitch(label: string): void {
+  const panel = document.createElement('div')
+  document.body.append(panel)
+  const settingsRoot = createRoot(panel)
+  act(() => { settingsRoot.render(<AdsSection />) })
   act(() => {
-    [...document.querySelectorAll('button')]
-      .find((b) => b.getAttribute('aria-label') === '广告设置')?.click()
+    [...panel.querySelectorAll('button')]
+      .find((b) => b.getAttribute('aria-label') === label)?.click()
   })
-}
-
-/** A settings-menu row by its label text. */
-function menuItem(text: string): HTMLButtonElement | undefined {
-  return [...document.querySelectorAll('button')].find((b) => b.textContent?.includes(text))
+  act(() => { settingsRoot.unmount() })
+  panel.remove()
 }
 
 /** The layer's own "关闭所有广告" control, if it is mounted. */
@@ -268,16 +278,16 @@ describe('AdLayer', () => {
     expect(popup()).toBeDefined()
   })
 
-  it('drops every other ad in solo mode and puts them back on the way out', () => {
+  it('clears a placement the moment its switch goes off, and refills on the way back', () => {
     mount()
     expect(banners().length).toBeGreaterThan(0)
-    openSettings()
-    act(() => { menuItem('只留蓝鲸')?.click() })
+    flipSwitch('两侧广告栏')
+    // Immediately, not whenever the next tick notices: a switch that takes
+    // effect "eventually" reads as broken.
     expect(banners()).toHaveLength(0)
     tick(30_000)
     expect(banners()).toHaveLength(0)
-    openSettings()
-    act(() => { menuItem('恢复全部广告')?.click() })
+    flipSwitch('两侧广告栏')
     tick(3000)
     expect(banners().length).toBeGreaterThan(0)
   })
@@ -290,26 +300,23 @@ describe('AdLayer', () => {
     expect(nukeButton()).toBeDefined()
   })
 
-  it('mutes and unmutes from the settings menu', () => {
-    mount()
-    openSettings()
-    expect(menuItem('静音广告')).toBeDefined()
-    act(() => { menuItem('静音广告')?.click() })
-    openSettings()
-    expect(menuItem('取消静音')).toBeDefined()
-  })
-
   it('remembers which placements are switched off', () => {
     // The whole point of moving these into storage: a gutter switched off has
     // to stay off, including across the layer being torn down and remounted.
     mount()
-    openSettings()
-    act(() => { menuItem('两侧广告栏')?.click() })
+    flipSwitch('两侧广告栏')
     expect(banners()).toHaveLength(0)
     act(() => root.unmount())
     root = createRoot(host)
     mount()
     expect(banners()).toHaveLength(0)
+  })
+
+  it('keeps the honest exit floating even with the settings page elsewhere', () => {
+    // "关闭所有广告" is the one control that cannot move into the settings
+    // dialog: it lasts until reload rather than being remembered.
+    mount()
+    expect(nukeButton()).toBeDefined()
   })
 
   it('leaves the slot empty for the cooldown, then refills it', () => {

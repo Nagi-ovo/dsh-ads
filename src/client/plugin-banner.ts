@@ -22,7 +22,7 @@ import type { SponsoredPlugin } from '../protocol.ts'
 import type { AdCreative } from './types.ts'
 
 /** Rendered size of an auto-drawn horizontal banner, in SVG user units. */
-const WIDE = { width: 720, height: 112 } as const
+const WIDE = { width: 720, height: 148 } as const
 
 /** Rendered size of an auto-drawn skyscraper, in SVG user units. */
 const TALL = { width: 300, height: 480 } as const
@@ -339,17 +339,27 @@ function dataUri(size: { width: number; height: number }, body: string): string 
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
 }
 
-/** Draw the horizontal banner. */
+/**
+ * Draw the horizontal banner.
+ *
+ * Two lines of body copy, not one. Plugin descriptions are a full sentence
+ * about what the thing does, and a single 33-em line cut most of them off
+ * mid-clause — in the feed, where this shape does its real work, that was the
+ * only text a reader had to go on.
+ */
 function drawWide(plugin: SponsoredPlugin, spec: Draft): string {
   const { palette } = spec
   const headSize = ems(spec.headline) > 16 ? 26 : 32
+  const sub = wrap(spec.sub, 33, 2)
+    .map((line, i) => `<text x="20" y="${96 + i * 24}" font-family="${FONT}" font-size="16"`
+      + ` fill="${palette.body}">${xml(line)}</text>`)
+    .join('')
   return dataUri(WIDE, backdrop(WIDE, palette)
-    + badge(spec.badge, { x: 12, y: 10 })
-    + headline(clamp(spec.headline, 20), { x: 20, y: 62 }, headSize, palette)
-    + `<text x="20" y="88" font-family="${FONT}" font-size="15" fill="${palette.body}">`
-    + `${xml(clamp(spec.sub, 33))}</text>`
-    + cta(spec.button, { x: WIDE.width - 156, y: 33, w: 136, h: 46 }, palette)
-    + slugLine(plugin.slug, { x: WIDE.width - 20, y: 22 }, palette, 'end'))
+    + badge(spec.badge, { x: 12, y: 12 })
+    + headline(clamp(spec.headline, 20), { x: 20, y: 70 }, headSize, palette)
+    + sub
+    + cta(spec.button, { x: WIDE.width - 166, y: 48, w: 146, h: 52 }, palette)
+    + slugLine(plugin.slug, { x: WIDE.width - 20, y: 24 }, palette, 'end'))
 }
 
 /**

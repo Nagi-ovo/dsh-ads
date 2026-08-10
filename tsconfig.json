@@ -8,12 +8,18 @@
     "module": "esnext",
     "moduleResolution": "bundler",
     "target": "es2022",
-    "lib": ["es2022"],
+    "lib": [
+      "es2022"
+    ],
     "jsx": "react-jsx",
     "allowImportingTsExtensions": true,
     "esModuleInterop": true,
     "noEmit": true
   },
-  "include": ["src", "tests"],
-  "exclude": ["src/client", "tests/client.spec.tsx"]
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "src/client"
+  ]
 }
