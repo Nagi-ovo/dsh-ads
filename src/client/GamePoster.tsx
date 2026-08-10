@@ -75,15 +75,15 @@ const settingsPanelStyle: CSSProperties = {
   position: 'absolute',
   bottom: '100%',
   right: -2,
-  marginBottom: 6,
+  marginBottom: 4,
   minWidth: 164,
-  padding: '4px 0',
   display: 'flex',
   flexDirection: 'column',
-  background: 'rgba(30, 30, 32, 0.97)',
-  border: '1px solid rgba(255, 255, 255, 0.12)',
-  borderRadius: 7,
-  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5)',
+  // Same oxblood and gold as the title bar it hangs off, and square like the
+  // card's own frame — the panel should read as part of the poster, not as a
+  // system menu that wandered in.
+  background: 'linear-gradient(#6b1414, #3d0a0a)',
+  border: '2px solid #c9a227',
   overflow: 'hidden',
 }
 
@@ -117,6 +117,15 @@ export function GamePoster(props: GamePosterProps) {
   const [entered, setEntered] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const hit = resolveHitbox(seed, POSTER_HITBOX_PX)
+  // Every row is a complete choice, so the panel closes behind it. Leaving it
+  // open covered the artwork it belongs to and made a one-shot menu look like
+  // a settings page the user still had to dismiss.
+  const controls: AdControlsProps = {
+    ...props.controls,
+    onToggleMute: () => { setSettingsOpen(false); props.controls.onToggleMute() },
+    onToggleSolo: () => { setSettingsOpen(false); props.controls.onToggleSolo() },
+    onNuke: () => { setSettingsOpen(false); props.controls.onNuke() },
+  }
   const height = POSTER_WIDTH * (creative.height / creative.width)
   const drag = useDrag(anchor, onMove, { width: POSTER_WIDTH, height: (collapsed ? 0 : height) + CHROME_H })
   // No retract timer: it stays until the user finds the real hitbox.
@@ -166,7 +175,7 @@ export function GamePoster(props: GamePosterProps) {
                 style={settingsPanelStyle}
                 onPointerDown={(event) => event.stopPropagation()}
               >
-                <AdControls {...props.controls} layout="menu" />
+                <AdControls {...controls} layout="menu" />
               </div>
             )}
           </span>

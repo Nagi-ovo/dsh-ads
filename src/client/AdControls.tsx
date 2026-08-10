@@ -52,6 +52,11 @@ const rowButtonStyle: CSSProperties = {
   cursor: 'pointer',
 }
 
+/**
+ * Menu rows wear the poster's own chrome — gold on oxblood, square corners,
+ * heavy type. A tasteful system menu hanging off a 火爆开服 title bar looked
+ * like a different application had leaked into the ad.
+ */
 const menuItemStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
@@ -59,10 +64,12 @@ const menuItemStyle: CSSProperties = {
   width: '100%',
   padding: '7px 11px',
   border: 0,
+  borderTop: '1px solid rgba(201, 162, 39, 0.28)',
   background: 'transparent',
-  color: 'rgba(255, 255, 255, 0.92)',
+  color: '#ffd76a',
   fontSize: 12,
   fontFamily: 'system-ui, sans-serif',
+  fontWeight: 700,
   lineHeight: '16px',
   whiteSpace: 'nowrap',
   textAlign: 'left',
@@ -101,9 +108,11 @@ export function AdControls(props: AdControlsProps & { readonly layout: ControlsL
           type="button"
           style={{
             ...menuItemStyle,
-            background: hovered === index ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+            // The first row sits straight under the panel's own border.
+            borderTop: index === 0 ? 0 : menuItemStyle.borderTop,
+            background: hovered === index ? 'rgba(201, 162, 39, 0.24)' : 'transparent',
             // The destructive one reads as destructive.
-            color: index === items.length - 1 ? 'rgba(255, 160, 160, 0.95)' : menuItemStyle.color,
+            color: index === items.length - 1 ? '#ff9a7a' : menuItemStyle.color,
           }}
           onMouseEnter={() => setHovered(index)}
           onMouseLeave={() => setHovered(-1)}
