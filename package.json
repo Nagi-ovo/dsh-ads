@@ -62,7 +62,8 @@
     "tsdown": "^0.22.2",
     "typescript": "^5.9.3",
     "vitest": "^4.1.1",
-    "@deepseek-ai/dsh-client-ui-settings": "link:../../.dsh/source/current/packages/client/ui-settings"
+    "@deepseek-ai/dsh-client-ui-settings": "link:../../.dsh/source/current/packages/client/ui-settings",
+    "@deepseek-ai/dsh-client-ui-primitives": "link:../../.dsh/source/current/packages/client/ui-primitives"
   },
   "license": "BSD-3-Clause"
 }

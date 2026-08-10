@@ -49,7 +49,13 @@ export const DEFAULT_SETTINGS: AdSettings = {
 export interface PlacementRow {
   /** Which switch it drives. */
   readonly key: Exclude<keyof AdSettings, 'muted'>
-  /** Leading glyph. */
+  /**
+   * Leading glyph for the in-ad menu only.
+   *
+   * The host's settings page uses the shell's own `ic_ds_*` icons instead, so
+   * that it looks like the rest of the dialog; emoji stay where the surrounding
+   * chrome is already a 2005 advertisement and they are in keeping.
+   */
   readonly icon: string
   /** Menu label. */
   readonly label: string

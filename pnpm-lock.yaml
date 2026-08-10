@@ -14,6 +14,9 @@ importers:
       '@deepseek-ai/dsh-client-ui-conversation':
         specifier: link:../../.dsh/source/current/packages/client/ui-conversation
         version: link:../../.dsh/source/current/packages/client/ui-conversation
+      '@deepseek-ai/dsh-client-ui-primitives':
+        specifier: link:../../.dsh/source/current/packages/client/ui-primitives
+        version: link:../../.dsh/source/current/packages/client/ui-primitives
       '@deepseek-ai/dsh-client-ui-settings':
         specifier: link:../../.dsh/source/current/packages/client/ui-settings
         version: link:../../.dsh/source/current/packages/client/ui-settings

@@ -16,8 +16,32 @@
  * @module
  */
 
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
+import {
+  IconDataOutline16,
+  IconNewChatOutline16,
+  IconPanelLeftOutline16,
+  IconPlayOutline16,
+  IconRightUpOutline16,
+  IconWarningOutline16,
+} from '@deepseek-ai/dsh-client-ui-primitives'
 import { PLACEMENTS, useAdSettings, type AdSettings } from './settings.ts'
+
+/**
+ * The shell's own `ic_ds_*` glyphs, one per row.
+ *
+ * Not the emoji the in-ad menu uses: this page sits between two first-party
+ * ones, and emoji next to the host's line icons is the single detail that made
+ * it read as bolted on.
+ */
+const ICONS: Readonly<Record<string, ReactNode>> = {
+  gutter: <IconPanelLeftOutline16 />,
+  feed: <IconNewChatOutline16 />,
+  popup: <IconRightUpOutline16 />,
+  speed: <IconDataOutline16 />,
+  scare: <IconWarningOutline16 />,
+  poster: <IconPlayOutline16 />,
+}
 
 /** What each switch actually turns off, in the user's terms. */
 const BLURBS: Readonly<Record<string, string>> = {
@@ -38,7 +62,10 @@ const rowStyle: CSSProperties = {
   borderTop: '1px solid rgba(128, 128, 128, 0.22)',
 }
 
-const labelStyle: CSSProperties = { fontSize: 15, lineHeight: 1.4 }
+const labelStyle: CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, lineHeight: 1.4 }
+
+/** Icons inherit the row's colour but sit a shade quieter than the label. */
+const iconStyle: CSSProperties = { display: 'flex', flex: '0 0 auto', opacity: 0.75 }
 
 const blurbStyle: CSSProperties = { fontSize: 13, lineHeight: 1.5, opacity: 0.55, marginTop: 2 }
 
@@ -138,7 +165,10 @@ export function AdsSection() {
       {PLACEMENTS.map((row) => (
         <div key={row.key} style={rowStyle}>
           <div>
-            <div style={labelStyle}>{row.icon} {row.label}</div>
+            <div style={labelStyle}>
+              <span style={iconStyle} aria-hidden="true">{ICONS[row.key]}</span>
+              {row.label}
+            </div>
             <div style={blurbStyle}>{BLURBS[row.key]}</div>
           </div>
           <Toggle
@@ -150,7 +180,10 @@ export function AdsSection() {
       ))}
       <div style={rowStyle}>
         <div>
-          <div style={labelStyle}>🔊 提示音</div>
+          {/* No glyph: the set has no speaker, and reusing a placement's icon
+              here would say these rows are the same kind of thing. The gap
+              reads as the separation it actually is. */}
+          <div style={labelStyle}>提示音</div>
           <div style={blurbStyle}>弹窗和海报出现时的「叮」一声，由 Web Audio 现场合成</div>
         </div>
         <Toggle
