@@ -269,6 +269,19 @@ export function AdLayer(props: AdLayerProps) {
   const posterRound = useRef(0)
   const weights = useMemo(() => creatives.map((c) => c.weight), [creatives])
 
+  // The dynamic tier arrives after a fetch, by which time the first tick has
+  // already filled every slot from the built-ins alone — and a full layer
+  // never spawns again, so community plugins would never reach the gutters at
+  // all. Growing the pool therefore clears the board once and lets it refill
+  // from everything. Compared against the previous size rather than array
+  // identity so a re-render cannot turn this into a spawn loop.
+  const poolSize = useRef(creatives.length)
+  useEffect(() => {
+    if (creatives.length === poolSize.current) return
+    poolSize.current = creatives.length
+    setAds([])
+  }, [creatives.length])
+
   useEffect(() => {
     if (creatives.length === 0 || retired || solo) return
     const tick = () => {

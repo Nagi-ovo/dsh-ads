@@ -33,6 +33,21 @@ export interface AdCreative {
    * that opens into a video is the whole point of a game ad.
    */
   readonly video?: string
+  /**
+   * Where the ad actually goes, when it goes anywhere.
+   *
+   * Built-in banners have none: their products do not exist. Banners for real
+   * community plugins carry their repository, and the takeover offers it as a
+   * plain link — the one honest thing in an otherwise entirely dishonest
+   * layout, and the reason a plugin author gets anything out of being here.
+   */
+  readonly href?: string
+  /**
+   * `<owner>/<repo>` of the advertised plugin, for creatives that advertise
+   * one. The fairness ledger counts impressions against this, so a plugin's
+   * horizontal and vertical banners share one tally.
+   */
+  readonly sponsor?: string
 }
 
 /**

@@ -10,13 +10,16 @@
  *   floating over it.
  */
 
+import { useMemo } from 'react'
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: pulls the `conversation.input.dock` and `conversation.chat.turnTail`
 // SlotMap declarations.
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { AdLayer } from './AdLayer.tsx'
 import { InlineAd, turnCarriesAd } from './InlineAd.tsx'
 import { BUILTIN_ADS, BUILTIN_POPUPS, BUILTIN_POSTERS } from './builtin-ads.ts'
+import { useSponsoredAds } from './registry.ts'
 import { DEFAULT_SPAWN } from './schedule.ts'
 import { DEFAULT_HITBOX_PX } from './hitbox.ts'
 
@@ -33,11 +36,23 @@ const DEFAULT_POSTER_FIRST_DELAY_MS = 20_000
 /** Delay before a closed pop-up or poster returns, in ms. */
 const DEFAULT_RESPAWN_MS = 60_000
 
-/** Dock entry: zero inline footprint, all output goes through the portal. */
-function AdDockEntry() {
+/**
+ * Dock entry: zero inline footprint, all output goes through the portal.
+ *
+ * The session id is what makes the dynamic tier rotate per conversation —
+ * switching sessions reshuffles which community plugins get the slots, which
+ * is the only pacing that does not depend on the user happening to be online
+ * when someone pushed.
+ *
+ * @param props - the dock's session-scoped standard kit.
+ * @returns the portalled ad layer.
+ */
+function AdDockEntry({ sessionId }: PropsRuntime<'conversation.input.dock'>) {
+  const sponsored = useSponsoredAds(sessionId)
+  const creatives = useMemo(() => [...BUILTIN_ADS, ...sponsored], [sponsored])
   return (
     <AdLayer
-      creatives={BUILTIN_ADS}
+      creatives={creatives}
       popups={BUILTIN_POPUPS}
       posters={BUILTIN_POSTERS}
       spawn={DEFAULT_SPAWN}

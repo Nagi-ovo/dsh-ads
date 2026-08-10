@@ -20,14 +20,16 @@
     "src",
     "assets",
     "cordis.patch.yml",
-    "dsh.plugin.json"
+    "dsh.plugin.json",
+    "contrib"
   ],
   "scripts": {
-    "assets": "node scripts/build-assets.mjs",
+    "assets": "node scripts/build-assets.mjs && node scripts/build-contrib.mjs",
     "build": "tsdown",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.client.json",
     "test": "vitest run",
-    "check": "pnpm run typecheck && pnpm run test && pnpm run build"
+    "check": "pnpm run typecheck && pnpm run test && pnpm run build",
+    "catalog": "node scripts/build-catalog.mjs"
   },
   "dsh": {
     "bundle": {

@@ -161,6 +161,19 @@ export function Lightbox({ creative, seed, onClose }: LightboxProps) {
         />
       </div>
       <div style={{ display: 'flex', gap: 10 }}>
+        {creative.href !== undefined && (
+          // The one link in the layer that goes somewhere real. Community
+          // plugins are advertised without being asked, so the least the joke
+          // owes them is a working way through to the repository.
+          <a
+            href={creative.href}
+            target="_blank"
+            rel="noreferrer noopener"
+            style={{ ...skipStyle, textDecoration: 'none' }}
+          >
+            🔗 去看看这个插件
+          </a>
+        )}
         {creative.video !== undefined && (
           <button
             type="button"

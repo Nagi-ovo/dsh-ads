@@ -1,20 +1,43 @@
+import { IncomingMessage, ServerResponse } from "node:http";
 //#region src/index.d.ts
+/** The slice of the host context this plugin uses. */
+interface HostContext {
+  /** The web shell's HTTP server; the only host capability the ad layer needs. */
+  httpServer: {
+    /**
+     * Publish a route.
+     * @param route - the path to claim and the handler to serve it.
+     * @returns the disposer that unpublishes it.
+     */
+    register(route: {
+      kind: 'exact';
+      path: string;
+      handler(req: IncomingMessage, res: ServerResponse): Promise<void>;
+    }): () => void;
+  };
+  /**
+   * Register a disposable effect.
+   * @param callback - runs on apply, returns its own teardown.
+   */
+  effect(callback: () => (() => void)): void;
+}
+/** Host capabilities required for the dynamic tier. */
+declare const inject: string[];
+/** Plugin configuration. */
+interface Config {
+  /**
+   * How recently a plugin must have been pushed to enter the rotation, in
+   * days. Zero or less advertises the whole hub.
+   */
+  freshDays?: number;
+  /** How long a fetched catalog is reused before the hub is read again, in minutes. */
+  cacheMinutes?: number;
+}
 /**
- * dsh-ads, node half.
- *
- * Pure UI plugin: the empty apply exists so the plugin appears in the host
- * cordis.yml / Loader; the browser half ships via `exports["./client"]`,
- * discovered through the package.json `dshClient` declaration. Every knob the
- * ad layer has lives in the browser, where the user can reach it from the
- * settings panel — a host-side `Config` would validate at boot and then have
- * no channel to the layer that needs it.
- *
- * A surface without the browser half simply has no ad layer, which is the
- * correct degradation for TUI, ACP, and headless.
- *
- * @module @dsh-external/dsh-ads
+ * Register the sponsor route.
+ * @param ctx - host context.
+ * @param config - see {@link Config}.
  */
-/** Host plugin body — no host-side behavior for the ad layer. */
-declare function apply(): void;
+declare function apply(ctx: HostContext, config?: Config): void;
 //#endregion
-export { apply };
+export { Config, apply, inject };

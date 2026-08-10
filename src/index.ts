@@ -1,12 +1,12 @@
 /**
  * dsh-ads, node half.
  *
- * Pure UI plugin: the empty apply exists so the plugin appears in the host
- * cordis.yml / Loader; the browser half ships via `exports["./client"]`,
- * discovered through the package.json `dshClient` declaration. Every knob the
- * ad layer has lives in the browser, where the user can reach it from the
- * settings panel — a host-side `Config` would validate at boot and then have
- * no channel to the layer that needs it.
+ * The built-in banners need nothing from the host — they are baked into the
+ * browser bundle and the layer's knobs all live where the user can reach them.
+ * The dynamic tier is the reason this half exists at all: it advertises real
+ * community plugins, the hub that lists them is private, and only the host
+ * holds credentials for it. So this registers exactly one route, hands the
+ * browser an already-filtered list, and does nothing else.
  *
  * A surface without the browser half simply has no ad layer, which is the
  * correct degradation for TUI, ACP, and headless.
@@ -14,5 +14,108 @@
  * @module @dsh-external/dsh-ads
  */
 
-/** Host plugin body — no host-side behavior for the ad layer. */
-export function apply(): void {}
+import type { IncomingMessage, ServerResponse } from 'node:http'
+import { REGISTRY_ROUTE, type RegistryPayload } from './protocol.ts'
+import { loadRegistry } from './catalog.ts'
+
+/** The slice of the host context this plugin uses. */
+interface HostContext {
+  /** The web shell's HTTP server; the only host capability the ad layer needs. */
+  httpServer: {
+    /**
+     * Publish a route.
+     * @param route - the path to claim and the handler to serve it.
+     * @returns the disposer that unpublishes it.
+     */
+    register(route: {
+      kind: 'exact'
+      path: string
+      handler(req: IncomingMessage, res: ServerResponse): Promise<void>
+    }): () => void
+  }
+  /**
+   * Register a disposable effect.
+   * @param callback - runs on apply, returns its own teardown.
+   */
+  effect(callback: () => (() => void)): void
+}
+
+/** Host capabilities required for the dynamic tier. */
+export const inject = ['httpServer']
+
+/** Plugin configuration. */
+export interface Config {
+  /**
+   * How recently a plugin must have been pushed to enter the rotation, in
+   * days. Zero or less advertises the whole hub.
+   */
+  freshDays?: number
+  /** How long a fetched catalog is reused before the hub is read again, in minutes. */
+  cacheMinutes?: number
+}
+
+/** Freshness window: a fortnight is long enough that a weekend release still gets seen. */
+const DEFAULT_FRESH_DAYS = 14
+
+/** Catalog reuse window; the hub regenerates far more slowly than this. */
+const DEFAULT_CACHE_MINUTES = 30
+
+/** This plugin's own slug, kept out of its own rotation. */
+const SELF_SLUG = 'dsh-external/dsh-ads'
+
+/** A payload plus when it was assembled. */
+interface CacheSlot {
+  /** The served list. */
+  readonly payload: RegistryPayload
+  /** Epoch ms at which it was built. */
+  readonly at: number
+}
+
+/**
+ * Serve JSON.
+ * @param res - the response to write.
+ * @param body - the payload.
+ */
+function json(res: ServerResponse, body: unknown): void {
+  const text = JSON.stringify(body)
+  res.writeHead(200, {
+    'content-type': 'application/json; charset=utf-8',
+    // The client caches per page load itself; letting the browser cache on top
+    // of the host's 30-minute window would make a freshly-pushed plugin wait
+    // twice as long to appear.
+    'cache-control': 'no-store',
+  })
+  res.end(text)
+}
+
+/**
+ * Register the sponsor route.
+ * @param ctx - host context.
+ * @param config - see {@link Config}.
+ */
+export function apply(ctx: HostContext, config: Config = {}): void {
+  const freshDays = config.freshDays ?? DEFAULT_FRESH_DAYS
+  const cacheMs = (config.cacheMinutes ?? DEFAULT_CACHE_MINUTES) * 60_000
+  let cache: CacheSlot | undefined
+  // Coalesces concurrent requests: several sessions opening at once must not
+  // each shell out to `gh`.
+  let inflight: Promise<RegistryPayload> | undefined
+
+  const resolve = async (): Promise<RegistryPayload> => {
+    const now = Date.now()
+    if (cache !== undefined && now - cache.at < cacheMs) return cache.payload
+    inflight ??= loadRegistry(now, freshDays, SELF_SLUG)
+      .then((payload) => {
+        cache = { payload, at: Date.now() }
+        return payload
+      })
+      .finally(() => { inflight = undefined })
+    return await inflight
+  }
+
+  ctx.effect(() => ctx.httpServer.register({
+    kind: 'exact',
+    path: REGISTRY_ROUTE,
+    handler: async (_req, res) => { json(res, await resolve()) },
+  }))
+}

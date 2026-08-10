@@ -7,16 +7,18 @@
  * content, ad, exactly the rhythm of a Chinese content portal, and the reason
  * the gutters can leave the reading column alone.
  *
- * Which turns carry an ad is a pure function of the turn's `seq`, so the
- * decision is stable across re-renders and scroll: an ad that appeared and
- * vanished as the transcript re-rendered would be a bug, not inventory.
+ * Which turns carry an ad is a pure function of the turn's `seq`. *Which* ad
+ * they carry is decided once per turn by {@link feedAd} and then remembered,
+ * which is what lets the feed work through the whole plugin hub without an ad
+ * ever changing under a reader mid-scroll.
  */
 
-import { useState, type CSSProperties } from 'react'
+import { useState, type CSSProperties, type ReactNode } from 'react'
 import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: pulls the `conversation.chat.turnTail` SlotMap declaration.
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { AdCreative } from './types.ts'
+import { feedAd } from './feed.ts'
 import { resolveHitbox, VISUAL_CLOSE_PX } from './hitbox.ts'
 import { usePersisted } from './persist.ts'
 
@@ -32,25 +34,37 @@ export function turnCarriesAd(seq: number): boolean {
   return seq > 0 && seq % INLINE_EVERY_N_TURNS === 0
 }
 
-/**
- * Pick the creative for a turn, deterministically.
- * @param seq - the closing assistant message's sequence number.
- * @param pool - the creative pool.
- * @returns the creative for this turn, or undefined when the pool is empty.
- */
-export function creativeForTurn(seq: number, pool: readonly AdCreative[]): AdCreative | undefined {
-  if (pool.length === 0) return undefined
-  return pool[Math.floor(seq / INLINE_EVERY_N_TURNS) % pool.length]
-}
-
 /** Business props injected by the registration, beside the owner currency. */
 export interface InlineAdInjected {
-  /** The creative pool this entry rotates through. */
+  /**
+   * The shipped banner pool. The community plugins the feed also draws from
+   * are held by {@link feedAd} itself, because there are far too many to hand
+   * across on every render.
+   */
   readonly pool: readonly AdCreative[]
 }
 
 /** Full props: the turn-tail owner currency plus the injected pool. */
 export type InlineAdProps = PropsRuntime<'conversation.chat.turnTail'> & InlineAdInjected
+
+/**
+ * Wrap the artwork in a link, or leave it alone.
+ *
+ * A plain `<a>` around an `<img>` when there is somewhere to go, and the image
+ * unwrapped when there is not — rather than an anchor with no `href`, which
+ * still takes focus and still shows a pointer for a click that does nothing.
+ *
+ * @param props - the destination, if any, and the artwork.
+ * @returns the artwork, linked or bare.
+ */
+function Frame({ href, children }: { readonly href: string | undefined; readonly children: ReactNode }) {
+  if (href === undefined) return <>{children}</>
+  return (
+    <a href={href} target="_blank" rel="noreferrer noopener" style={{ display: 'block' }}>
+      {children}
+    </a>
+  )
+}
 
 const labelStyle: CSSProperties = {
   fontSize: 10,
@@ -71,13 +85,15 @@ const labelStyle: CSSProperties = {
  * @param props - see {@link InlineAdProps}.
  * @returns the inline banner, or null once dismissed.
  */
-export function InlineAd({ seq, pool }: InlineAdProps) {
+export function InlineAd({ seq, sessionId, pool }: InlineAdProps) {
   const [closed, setClosed] = useState(false)
   // Solo mode is set on the floating layer, in a different React tree; the
   // preference is shared through storage so "keep only the poster" really does
   // mean only the poster.
   const [solo] = usePersisted('solo', false)
-  const creative = creativeForTurn(seq, pool)
+  // Keyed by session as well as seq: sequence numbers restart per conversation,
+  // and without the session two different turns would share one assignment.
+  const creative = feedAd(`${sessionId}:${seq}`, pool)
   if (solo || closed || creative === undefined) return null
   // Seed from seq so the hitbox is stable per turn without any stored state.
   const hit = resolveHitbox((seq * 0.618_033) % 1)
@@ -85,12 +101,18 @@ export function InlineAd({ seq, pool }: InlineAdProps) {
     <div style={{ margin: '8px 0 4px', maxWidth: 420 }}>
       <div style={labelStyle}>广告</div>
       <div style={{ position: 'relative' }}>
-        <img
-          src={creative.src}
-          alt={creative.alt}
-          draggable={false}
-          style={{ display: 'block', width: '100%', height: 'auto', border: '1px solid rgba(0, 0, 0, 0.2)' }}
-        />
+        {/* Banners for real community plugins link to their repository; the
+            built-ins advertise things that do not exist and stay inert. The
+            feed is the placement people actually read, so this is where an
+            advertised author gets something back for being here. */}
+        <Frame href={creative.href}>
+          <img
+            src={creative.src}
+            alt={creative.alt}
+            draggable={false}
+            style={{ display: 'block', width: '100%', height: 'auto', border: '1px solid rgba(0, 0, 0, 0.2)' }}
+          />
+        </Frame>
         <div
           aria-hidden="true"
           style={{
