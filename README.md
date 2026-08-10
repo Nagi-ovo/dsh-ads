@@ -51,6 +51,10 @@ dsh plugin --profile web add link:/path/to/dsh-ads
 
 换素材：图放进 `assets/ads`（侧栏）、`assets/popups`（右下角）或 `assets/posters`（左下角），在 `scripts/build-assets.mjs` 里补一行文案，跑 `pnpm run assets` 重新内联。webp 动图直接能用。在 `assets/posters` 里放一个同名 `.mp4`，点开广告时就播它。改源码后跑 `pnpm run check`。
 
+## 顺便打个广告（这次是真的）
+
+同一个作者的 [dsh-visualize](https://github.com/dsh-external/dsh-visualize)：让模型把可交互的 HTML 卡片直接画进对话里，带流式预览和鲸鱼蓝主题跟随。跟这里所有的假广告不一样，那个是正经插件。
+
 ## 免责
 
 纯属娱乐。图里的品牌、域名、人物、价格、承诺全是编的，域名打了码；与 DeepSeek 以及任何真实存在的公司、产品、服务均无关联，如有雷同纯属巧合。提示音是 Web Audio 现合成的，没打包任何第三方音频。
