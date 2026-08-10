@@ -20,12 +20,18 @@ import { GamePoster, POSTER_WIDTH } from './GamePoster.tsx'
 import { AdControls, type AdControlsProps } from './AdControls.tsx'
 import { isSolo, useAdSettings } from './settings.ts'
 import { usePersisted, type Anchor } from './persist.ts'
-import { FALLBACK_SAFE_AREA, layout, resolvePlacement, type SafeArea, type Viewport } from './placement.ts'
+import { FALLBACK_SAFE_AREA, layout, looksLikeSidebar, resolvePlacement, type SafeArea, type Viewport } from './placement.ts'
 import { pruneCooling, targetCount, weightedPick, type SpawnConfig } from './schedule.ts'
 import type { AdCreative, PlacedAd } from './types.ts'
 
 /** How often the layer re-checks its population target, in ms. */
 const TICK_MS = 2000
+
+/** Gap between attempts to read the navigation timing, in ms. */
+const SPEED_RETRY_MS = 250
+
+/** How many attempts before giving up on a browser that reports no timing. */
+const SPEED_ATTEMPTS = 20
 
 /** Props for the ad layer. */
 export interface AdLayerProps {
@@ -81,12 +87,9 @@ const COLUMN_PAD = 12
  *
  * The sidebar is navigation, not content: burying the session list makes the
  * app unusable rather than annoying, so the layer stops at its right edge.
- * It is identified by shape — flush with the left edge, most of the viewport
- * tall, in a plausible sidebar width band — rather than by tag or class,
- * because the shell's class names are per-build CSS-module hashes
- * (`n3zdcq_sidebarCol`) and there is no semantic landmark to match. The scan
- * is depth-bounded so a deep render tree cannot turn this into a full-document
- * walk on every tick.
+ * {@link looksLikeSidebar} owns what counts as one; this walk only bounds the
+ * search, so a deep render tree cannot turn it into a full-document scan on
+ * every tick.
  *
  * @param viewportHeight - current viewport height, in CSS pixels.
  * @returns the sidebar's right edge, or 0 when it is collapsed or absent.
@@ -96,9 +99,7 @@ function measureSidebar(viewportHeight: number): number {
   const visit = (node: Element, depth: number) => {
     if (depth > SIDEBAR_SCAN_DEPTH) return
     const rect = node.getBoundingClientRect()
-    if (rect.left <= 2 && rect.height > viewportHeight * 0.6 && rect.width > 120 && rect.width < 400) {
-      right = Math.max(right, rect.right)
-    }
+    if (looksLikeSidebar(rect, viewportHeight)) right = Math.max(right, rect.right)
     for (const child of node.children) visit(child, depth + 1)
   }
   for (const child of document.body.children) visit(child, 1)
@@ -384,13 +385,31 @@ export function AdLayer(props: AdLayerProps) {
   // that order, and looping either would starve everything behind it.
   useEffect(() => {
     if (retired || !settings.speed || speedFirstDelayMs <= 0 || speedRound.current > 0) return
-    const timer = setTimeout(() => {
+    let attempts = 0
+    /** Show the benchmark, or report that the timing is not readable yet. */
+    const attempt = (): boolean => {
       const reading = readSpeed()
-      if (reading === undefined) return
+      if (reading === undefined) {
+        attempts += 1
+        return attempts < SPEED_ATTEMPTS
+      }
       speedRound.current += 1
       setSpeed({ reading, seed: Math.random() })
+      return false
+    }
+    // A startup benchmark has to arrive at startup, which puts it in a race
+    // with the very thing it measures: `loadEventEnd` is still zero until the
+    // load event fires, and a single early read would come back empty and
+    // silently retire the window for the whole session. So it retries.
+    let poll: ReturnType<typeof setInterval> | undefined
+    const start = setTimeout(() => {
+      if (!attempt()) return
+      poll = setInterval(() => { if (!attempt()) clearInterval(poll) }, SPEED_RETRY_MS)
     }, speedFirstDelayMs)
-    return () => clearTimeout(timer)
+    return () => {
+      clearTimeout(start)
+      clearInterval(poll)
+    }
   }, [speedFirstDelayMs, retired, settings.speed])
 
   useEffect(() => {

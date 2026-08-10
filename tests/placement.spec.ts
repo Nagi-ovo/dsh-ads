@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest'
 import {
   FALLBACK_SAFE_AREA,
   layout,
+  looksLikeSidebar,
   resolvePlacement,
   type SafeArea,
   type Viewport,
@@ -158,5 +159,28 @@ describe('layout', () => {
     for (const { box } of layout(placeMany(6), small, tight)) {
       expect(box.left + box.width <= tight.columnLeft || box.left >= tight.columnRight).toBe(true)
     }
+  })
+})
+
+describe('looksLikeSidebar', () => {
+  /** A viewport tall enough that the 60% height rule is meaningful. */
+  const VIEWPORT_H = 846
+
+  it('recognises the sidebar collapsed to its icon rail', () => {
+    // The measured rail is 56px. A threshold set for the expanded column let
+    // banners start at the viewport edge and bury the navigation, which is the
+    // one region this layer promises to leave alone.
+    expect(looksLikeSidebar({ left: 0, width: 56, height: 846 }, VIEWPORT_H)).toBe(true)
+  })
+
+  it('still recognises it expanded', () => {
+    expect(looksLikeSidebar({ left: 0, width: 280, height: 846 }, VIEWPORT_H)).toBe(true)
+  })
+
+  it('ignores things that merely touch the left edge', () => {
+    expect(looksLikeSidebar({ left: 0, width: 14, height: 846 }, VIEWPORT_H)).toBe(false)
+    expect(looksLikeSidebar({ left: 0, width: 900, height: 846 }, VIEWPORT_H)).toBe(false)
+    expect(looksLikeSidebar({ left: 0, width: 200, height: 200 }, VIEWPORT_H)).toBe(false)
+    expect(looksLikeSidebar({ left: 320, width: 200, height: 846 }, VIEWPORT_H)).toBe(false)
   })
 })

@@ -41,8 +41,12 @@ const DEFAULT_POSTER_FIRST_DELAY_MS = 20_000
 /** Delay before a closed pop-up or poster returns, in ms. */
 const DEFAULT_RESPAWN_MS = 60_000
 
-/** Delay before the benchmark result appears, in ms — first of everything. */
-const DEFAULT_SPEED_FIRST_DELAY_MS = 5_000
+/**
+ * Delay before the benchmark result appears, in ms — first of everything, and
+ * barely a delay at all: it reports the startup time, so it belongs at startup.
+ * Just long enough for the app's own first paint to land first.
+ */
+const DEFAULT_SPEED_FIRST_DELAY_MS = 400
 
 /** Where the alert's and the benchmark's calls to action send the user. */
 const SCARE_HREF = 'https://github.com/dsh-external/dsh-ads'

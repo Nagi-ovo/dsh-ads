@@ -58,6 +58,42 @@ const MIN_COLUMN_WIDTH = 150
 /** Gap between banners and against the gutter edges, in CSS pixels. */
 const GAP = 8
 
+/**
+ * Narrowest a sidebar may be and still be recognised, in CSS pixels.
+ *
+ * The session sidebar collapses to a 56px icon rail, and a threshold set for
+ * the expanded column simply stopped seeing it — so the banners started at the
+ * viewport edge and buried the navigation, which is the one thing the layer
+ * promises never to do. Low enough for the rail, high enough that a scrollbar
+ * or a thin divider cannot pass for a sidebar.
+ */
+const MIN_SIDEBAR_WIDTH = 44
+
+/** Widest a sidebar may be and still be a sidebar rather than content. */
+const MAX_SIDEBAR_WIDTH = 400
+
+/**
+ * Whether a rectangle has the shape of the session sidebar.
+ *
+ * Shape rather than identity: the shell's class names are per-build CSS-module
+ * hashes (`n3zdcq_sidebarCol`) and there is no semantic landmark to match, so
+ * the only stable description is "flush with the left edge, most of the
+ * viewport tall, in a plausible sidebar width band".
+ *
+ * @param rect - the candidate's bounding box.
+ * @param viewportHeight - current viewport height, in CSS pixels.
+ * @returns true when the candidate should be treated as the sidebar.
+ */
+export function looksLikeSidebar(
+  rect: { readonly left: number; readonly width: number; readonly height: number },
+  viewportHeight: number,
+): boolean {
+  return rect.left <= 2
+    && rect.height > viewportHeight * 0.6
+    && rect.width >= MIN_SIDEBAR_WIDTH
+    && rect.width <= MAX_SIDEBAR_WIDTH
+}
+
 /** Which gutter a banner occupies. */
 export type AdSide = 'left' | 'right'
 
