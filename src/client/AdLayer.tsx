@@ -13,6 +13,7 @@ import { createPortal } from 'react-dom'
 import { AdBanner } from './AdBanner.tsx'
 import { Lightbox } from './Lightbox.tsx'
 import { ToastPopup } from './ToastPopup.tsx'
+import { VirusToast } from './VirusToast.tsx'
 import { GamePoster, POSTER_WIDTH } from './GamePoster.tsx'
 import { AdControls, type AdControlsProps } from './AdControls.tsx'
 import { usePersisted, type Anchor } from './persist.ts'
@@ -46,6 +47,14 @@ export interface AdLayerProps {
   readonly respawnMs: number
   /** Whether a pop-up or poster chimes on arrival. */
   readonly chime: boolean
+  /**
+   * Delay before the fake security alert appears, in ms; zero disables it.
+   * Shorter than every other opening delay on purpose — a virus warning that
+   * turned up third would have missed its moment.
+   */
+  readonly scareFirstDelayMs: number
+  /** Where the alert's "立即修复" sends the user. */
+  readonly scareHref: string
 }
 
 /** How deep to descend from `<body>` when looking for the sidebar. */
@@ -238,7 +247,7 @@ const muteStyle: CSSProperties = { ...nukeStyle, padding: '2px 6px' }
  */
 export function AdLayer(props: AdLayerProps) {
   const { creatives, popups, posters, spawn, hitboxPx, chime } = props
-  const { popupFirstDelayMs, posterFirstDelayMs, respawnMs } = props
+  const { popupFirstDelayMs, posterFirstDelayMs, respawnMs, scareFirstDelayMs, scareHref } = props
   const viewport = useViewport()
   const safe = useSafeArea(viewport)
   const [ads, setAds] = useState<readonly PlacedAd[]>([])
@@ -248,6 +257,9 @@ export function AdLayer(props: AdLayerProps) {
   const [cooling, setCooling] = useState<readonly number[]>([])
   const [takeover, setTakeover] = useState<PlacedAd | undefined>(undefined)
   const [popup, setPopup] = useState<PlacedAd | undefined>(undefined)
+  // The fake security alert holds the bottom-right corner before the pop-up
+  // does; it carries no artwork, so a seed for the decoy ✕ is all it needs.
+  const [scare, setScare] = useState<number | undefined>(undefined)
   const [poster, setPoster] = useState<PlacedAd | undefined>(undefined)
   // "关闭所有广告" is the one control here that tells the truth: it ends the
   // layer for this page load. Nothing re-arms it short of a reload, so a user
@@ -266,6 +278,7 @@ export function AdLayer(props: AdLayerProps) {
   const spawnedTotal = useRef(0)
   const placements = useRef(0)
   const popupRound = useRef(0)
+  const scareRound = useRef(0)
   const posterRound = useRef(0)
   const weights = useMemo(() => creatives.map((c) => c.weight), [creatives])
 
@@ -330,8 +343,24 @@ export function AdLayer(props: AdLayerProps) {
   // The effect is a no-op while one is on screen, so nothing replaces a
   // pop-up the user is still looking at — and the delay after that is the
   // respawn gap, because the only way it left is that the user closed it.
+  // Fires once and never again. Unlike the pop-up and the poster, this one is
+  // an opener: it holds the corner the pop-up wants, so a version that came
+  // back every minute would starve the pop-up permanently — and a virus alert
+  // on a loop stops being a joke and becomes furniture.
+  useEffect(() => {
+    if (retired || solo || scareFirstDelayMs <= 0 || scareRound.current > 0) return
+    const timer = setTimeout(() => {
+      scareRound.current += 1
+      setScare(Math.random())
+    }, scareFirstDelayMs)
+    return () => clearTimeout(timer)
+  }, [scareFirstDelayMs, retired, solo])
+
+  // The pop-up waits its turn: both live in the bottom-right corner, and two
+  // windows stacked there would just look like a rendering fault.
   useEffect(() => {
     if (retired || solo || popups.length === 0 || popupFirstDelayMs <= 0 || popup !== undefined) return
+    if (scare !== undefined) return
     const timer = setTimeout(() => {
       const creative = popups[popupRound.current % popups.length]
       if (creative === undefined) return
@@ -346,7 +375,7 @@ export function AdLayer(props: AdLayerProps) {
       })
     }, popupRound.current === 0 ? popupFirstDelayMs : respawnMs)
     return () => clearTimeout(timer)
-  }, [popups, popupFirstDelayMs, respawnMs, popup, retired, solo])
+  }, [popups, popupFirstDelayMs, respawnMs, popup, retired, solo, scare])
 
   // The bottom-left poster: opposite corner from the pop-up so the two never
   // fight for the same pixels.
@@ -381,6 +410,7 @@ export function AdLayer(props: AdLayerProps) {
     setTakeover(undefined)
     setPopup(undefined)
     setPoster(undefined)
+    setScare(undefined)
     setRetired(true)
   }, [])
 
@@ -401,6 +431,7 @@ export function AdLayer(props: AdLayerProps) {
       // the layer "occupied". Coming back out, they respawn on the next tick.
       setAds([])
       setPopup(undefined)
+      setScare(undefined)
       setSolo(!solo)
     },
     onNuke: nuke,
@@ -410,7 +441,8 @@ export function AdLayer(props: AdLayerProps) {
   // Solo mode always renders, even with nothing on screen yet: the control bar
   // lives in this tree, and bailing out early while the poster is still on its
   // opening delay would strand the user in a mode they cannot leave.
-  const empty = ads.length === 0 && takeover === undefined && popup === undefined && poster === undefined
+  const empty = ads.length === 0 && takeover === undefined && popup === undefined
+    && poster === undefined && scare === undefined
   if (empty && !solo) return null
   return createPortal(
     <div style={{ position: 'fixed', inset: 0, zIndex: 2_147_400_000, pointerEvents: 'none' }}>
@@ -424,6 +456,15 @@ export function AdLayer(props: AdLayerProps) {
           onMisfire={() => setTakeover(ad)}
         />
       ))}
+      {scare !== undefined && (
+        <VirusToast
+          key={`scare-${scareRound.current}`}
+          seed={scare}
+          chime={chime && !muted}
+          href={scareHref}
+          onClose={() => setScare(undefined)}
+        />
+      )}
       {popup !== undefined && (
         <ToastPopup
           key={popup.key}

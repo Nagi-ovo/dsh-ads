@@ -15,6 +15,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { AdLayer } from '../src/client/AdLayer.tsx'
 import type { AdCreative } from '../src/client/types.ts'
 import type { SpawnConfig } from '../src/client/schedule.ts'
+import { SCARE_SECONDS } from '../src/client/VirusToast.tsx'
 
 /**
  * Two flat banners: short enough that jsdom's 1024×768 viewport fits the whole
@@ -53,6 +54,9 @@ const POPUPS: readonly AdCreative[] = [
 
 /** First-appearance and respawn delays for the corner cadence test. */
 const POPUP_FIRST_MS = 10_000
+
+/** The security alert opens before the pop-up and holds the same corner. */
+const SCARE_FIRST_MS = 5_000
 const RESPAWN_MS = 60_000
 
 /**
@@ -72,6 +76,8 @@ function mount(corners = false): void {
         popupFirstDelayMs={corners ? POPUP_FIRST_MS : 0}
         posterFirstDelayMs={0}
         respawnMs={RESPAWN_MS}
+        scareFirstDelayMs={corners ? SCARE_FIRST_MS : 0}
+        scareHref="https://example.invalid/repo"
         chime={false}
       />,
     )
@@ -87,6 +93,12 @@ function popup(): HTMLImageElement | undefined {
 /** Every banner image currently portalled onto the document. */
 function banners(): HTMLImageElement[] {
   return [...document.querySelectorAll('img')].filter((img) => img.alt.startsWith('广告'))
+}
+
+/** The security alert's real (tiny) close target, if the alert is up. */
+function closeScare(): HTMLButtonElement | undefined {
+  return [...document.querySelectorAll('button')]
+    .find((b) => b.getAttribute('aria-label') === '关闭安全提示')
 }
 
 /** The layer's own "关闭所有广告" control, if it is mounted. */
@@ -130,9 +142,35 @@ describe('AdLayer', () => {
     expect(document.body.textContent).not.toContain('秒后可跳过')
   })
 
+  it('opens the security alert first and makes the pop-up wait for the corner', () => {
+    mount(true)
+    act(() => { vi.advanceTimersByTime(SCARE_FIRST_MS) })
+    expect(document.body.textContent).toContain('发现 1 个高危风险项')
+    // Two windows stacked in one corner reads as a rendering fault, so the
+    // pop-up must not arrive on its own schedule while the alert is up.
+    act(() => { vi.advanceTimersByTime(POPUP_FIRST_MS * 3) })
+    expect(popup()).toBeUndefined()
+    act(() => { closeScare()?.click() })
+    act(() => { vi.advanceTimersByTime(POPUP_FIRST_MS) })
+    expect(popup()).toBeDefined()
+  })
+
+  it('restarts the alert countdown instead of ever finishing it', () => {
+    mount(true)
+    act(() => { vi.advanceTimersByTime(SCARE_FIRST_MS) })
+    expect(document.body.textContent).toContain(`${SCARE_SECONDS} 秒`)
+    act(() => { vi.advanceTimersByTime(SCARE_SECONDS * 1000) })
+    expect(document.body.textContent).toContain('清除失败')
+    // Back to the top: the countdown is the joke, so it must never resolve.
+    act(() => { vi.advanceTimersByTime(2000) })
+    expect(document.body.textContent).toContain(`${SCARE_SECONDS} 秒`)
+  })
+
   it('holds the corner pop-up on screen until it is closed, then brings it back', () => {
     mount(true)
     expect(popup()).toBeUndefined()
+    act(() => { vi.advanceTimersByTime(SCARE_FIRST_MS) })
+    act(() => { closeScare()?.click() })
     act(() => { vi.advanceTimersByTime(POPUP_FIRST_MS) })
     expect(popup()).toBeDefined()
     // It must not retract on its own: an ad that leaves unprompted is a
