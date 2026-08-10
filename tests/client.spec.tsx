@@ -312,6 +312,21 @@ describe('AdLayer', () => {
     expect(banners()).toHaveLength(0)
   })
 
+  it('gets out of the way while a host dialog is open', async () => {
+    mount()
+    const layer = () => banners()[0]?.closest('div[style*="visibility"]') as HTMLElement | null
+    expect(layer()?.style.visibility).toBe('visible')
+    const dialog = document.createElement('div')
+    dialog.setAttribute('role', 'dialog')
+    dialog.setAttribute('aria-modal', 'true')
+    // The observer reports on a microtask, so the assertion has to let one run.
+    await act(async () => { document.body.append(dialog) })
+    expect(layer()?.style.visibility).toBe('hidden')
+    // And comes back, still holding its state rather than restarting.
+    await act(async () => { dialog.remove() })
+    expect(layer()?.style.visibility).toBe('visible')
+  })
+
   it('keeps the honest exit floating even with the settings page elsewhere', () => {
     // "关闭所有广告" is the one control that cannot move into the settings
     // dialog: it lasts until reload rather than being remembered.

@@ -136,6 +136,32 @@ function measureHeader(viewport: Viewport, columnLeft: number): number {
 }
 
 /**
+ * Track whether a host modal is open.
+ *
+ * `[role="dialog"][aria-modal="true"]` is the one semantic landmark the shell
+ * offers — its class names are per-build hashes — and it is the right signal
+ * anyway: a modal is a claim on the user's whole attention, and an ad layer
+ * that keeps painting over one has stopped being a joke about ads and started
+ * being a broken window manager.
+ *
+ * Watched rather than polled, so the layer clears the moment the dialog opens
+ * instead of on the next two-second tick.
+ *
+ * @returns true while a modal dialog is on screen.
+ */
+function useModalOpen(): boolean {
+  const [open, setOpen] = useState(false)
+  useEffect(() => {
+    const check = () => setOpen(document.querySelector('[role="dialog"][aria-modal="true"]') !== null)
+    check()
+    const observer = new MutationObserver(check)
+    observer.observe(document.body, { childList: true, subtree: true, attributeFilter: ['role', 'aria-modal'] })
+    return () => observer.disconnect()
+  }, [])
+  return open
+}
+
+/**
  * Track the viewport size.
  * @returns the current viewport dimensions, updated on resize.
  */
@@ -259,6 +285,7 @@ export function AdLayer(props: AdLayerProps) {
   const { popupFirstDelayMs, posterFirstDelayMs, respawnMs, scareDelayMs, scareHref, speedFirstDelayMs } = props
   const viewport = useViewport()
   const safe = useSafeArea(viewport)
+  const modalOpen = useModalOpen()
   const [ads, setAds] = useState<readonly PlacedAd[]>([])
   // Reopen timestamps for slots the user has closed. One entry suppresses one
   // banner until it expires; see schedule.ts for why the target is expressed
@@ -473,7 +500,18 @@ export function AdLayer(props: AdLayerProps) {
     && poster === undefined && scare === undefined && speed === undefined
   if (empty && !anyOn) return null
   return createPortal(
-    <div style={{ position: 'fixed', inset: 0, zIndex: 2_147_400_000, pointerEvents: 'none' }}>
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 2_147_400_000,
+        pointerEvents: 'none',
+        // Hidden rather than unmounted while a dialog is up: tearing the layer
+        // down would reset every countdown and replay every entrance animation
+        // the moment the dialog closed.
+        visibility: modalOpen ? 'hidden' : 'visible',
+      }}
+    >
       {placed.map(({ ad, box }) => (
         <AdBanner
           key={ad.key}
