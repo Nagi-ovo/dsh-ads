@@ -55,7 +55,11 @@ dsh plugin --profile web add link:/path/to/dsh-ads
 
 同一个作者的 [dsh-visualize](https://github.com/dsh-external/dsh-visualize)：对话内的生成式 UI，模型把界面直接画进会话流，带流式预览和鲸鱼蓝主题跟随。这条是全 README 唯一没编的。
 
+<div align="center">
+
 https://github.com/user-attachments/assets/93ff08ef-cf32-4a87-bf63-274c1a0a71e2
+
+</div>
 
 ## 免责
 
