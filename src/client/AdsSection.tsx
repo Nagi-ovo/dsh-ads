@@ -27,6 +27,7 @@ import Newspaper from 'lucide-react/dist/esm/icons/newspaper.mjs'
 import PanelsLeftRight from 'lucide-react/dist/esm/icons/panels-left-right.mjs'
 import ShieldAlert from 'lucide-react/dist/esm/icons/shield-alert.mjs'
 import Volume2 from 'lucide-react/dist/esm/icons/volume-2.mjs'
+import { retireAds, useRetired } from './retire.ts'
 import { PLACEMENTS, useAdSettings, type AdSettings } from './settings.ts'
 
 /**
@@ -88,6 +89,18 @@ const sourceStyle: CSSProperties = {
 
 const linkStyle: CSSProperties = { color: 'inherit', textDecoration: 'underline', textUnderlineOffset: 2 }
 
+const quietButtonStyle: CSSProperties = {
+  alignSelf: 'flex-start',
+  padding: '7px 14px',
+  border: '1px solid rgba(180, 60, 50, 0.5)',
+  borderRadius: 8,
+  background: 'transparent',
+  color: '#c2382c',
+  fontSize: 13,
+  fontFamily: 'inherit',
+  cursor: 'pointer',
+}
+
 /** Props for one switch. */
 interface ToggleProps {
   /** Whether it is on. */
@@ -148,6 +161,7 @@ function Toggle({ on, label, onToggle }: ToggleProps) {
  */
 export function AdsSection() {
   const [settings, setSettings] = useAdSettings()
+  const retired = useRetired()
   const set = (patch: Partial<AdSettings>) => setSettings({ ...settings, ...patch })
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -196,8 +210,21 @@ export function AdsSection() {
           onToggle={() => set({ muted: !settings.muted })}
         />
       </div>
+      {/* An action, not a switch, and visibly separated from them: it lasts
+          until the page is reloaded rather than being remembered, and sitting
+          it among the switches would read as a setting that forgets itself. */}
+      <div style={{ marginTop: 22, paddingTop: 18, borderTop: '1px solid rgba(128, 128, 128, 0.22)' }}>
+        <div style={{ ...blurbStyle, marginTop: 0, marginBottom: 10 }}>
+          {retired
+            ? '本次会话的广告已经全部关闭，刷新页面后按上面的开关恢复。'
+            : '想现在清净一下，但不改上面的选择：'}
+        </div>
+        <button type="button" style={quietButtonStyle} onClick={retireAds} disabled={retired}>
+          {retired ? '本次已关闭' : '立刻关闭所有广告（刷新后恢复）'}
+        </button>
+      </div>
       <div style={{ ...blurbStyle, marginTop: 18 }}>
-        全部关掉这个插件就没有任何显示了，但它还装着 —— 想彻底移除请卸载插件本身。
+        开关全部关掉这个插件就没有任何显示了，但它还装着 —— 想彻底移除请卸载插件本身。
       </div>
     </div>
   )

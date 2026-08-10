@@ -17,7 +17,8 @@ import { VirusToast } from './VirusToast.tsx'
 import { SpeedToast } from './SpeedToast.tsx'
 import { readSpeed, type SpeedReading } from './speed-score.ts'
 import { GamePoster, POSTER_WIDTH } from './GamePoster.tsx'
-import { AdControls, type AdControlsProps } from './AdControls.tsx'
+import type { AdControlsProps } from './AdControls.tsx'
+import { retireAds, useRetired } from './retire.ts'
 import { isSolo, useAdSettings } from './settings.ts'
 import { usePersisted, type Anchor } from './persist.ts'
 import { FALLBACK_SAFE_AREA, layout, looksLikeSidebar, resolvePlacement, type SafeArea, type Viewport } from './placement.ts'
@@ -250,31 +251,6 @@ function pickCreative(
   return pool[weightedPick(w, Math.random())]
 }
 
-/** The pair of honest controls, centred along the bottom edge. */
-const controlBarStyle: CSSProperties = {
-  position: 'fixed',
-  left: '50%',
-  transform: 'translateX(-50%)',
-  bottom: 4,
-  zIndex: 2_147_400_000,
-  display: 'flex',
-  gap: 4,
-  pointerEvents: 'auto',
-}
-
-const nukeStyle: CSSProperties = {
-  padding: '2px 8px',
-  border: '1px solid rgba(128, 128, 128, 0.5)',
-  borderRadius: 3,
-  background: 'rgba(240, 240, 240, 0.9)',
-  color: '#444',
-  fontSize: 11,
-  fontFamily: 'system-ui, sans-serif',
-  cursor: 'pointer',
-}
-
-/** Same chrome as the nuke button, sized down to one glyph. */
-const muteStyle: CSSProperties = { ...nukeStyle, padding: '2px 6px' }
 
 /**
  * Mount the layer.
@@ -300,11 +276,10 @@ export function AdLayer(props: AdLayerProps) {
   // The benchmark result, once measured. Same corner, strictly after the alert.
   const [speed, setSpeed] = useState<{ reading: SpeedReading; seed: number } | undefined>(undefined)
   const [poster, setPoster] = useState<PlacedAd | undefined>(undefined)
-  // "关闭所有广告" is the one control here that tells the truth: it ends the
-  // layer for this page load. Nothing re-arms it short of a reload, so a user
-  // who is done with the joke is done with it — and unlike the switches below
-  // it is deliberately not stored, or one stray click would be an uninstall.
-  const [retired, setRetired] = useState(false)
+  // "关闭所有广告" lives in its own module because the button that presses it
+  // sits in the host's settings dialog, a different React tree. See retire.ts
+  // for why it is page-load state rather than a stored setting.
+  const retired = useRetired()
   // Which placements are switched on, and whether they chime. Stored, shared
   // with the host's own settings page, and the reason the layer can be pared
   // down to "just the whale and the benchmark" and stay that way.
@@ -482,7 +457,7 @@ export function AdLayer(props: AdLayerProps) {
     setPoster(undefined)
     setScare(undefined)
     setSpeed(undefined)
-    setRetired(true)
+    retireAds()
   }, [])
 
   // Laid out as a running total down each gutter, so banners that overflow the
@@ -509,15 +484,12 @@ export function AdLayer(props: AdLayerProps) {
   }
 
   if (retired) return null
-  // The control bar lives in this tree, so bailing out while every placement
-  // is off — or merely still on its opening delay — would strand a user who
-  // switched things off from the bar itself. It renders whenever anything is
-  // still switched on.
-  const anyOn = settings.gutter || settings.feed || settings.popup
-    || settings.speed || settings.scare || settings.poster
+  // Nothing on screen means nothing to portal. Every control now lives in the
+  // host's settings dialog or in the poster's own title bar, so an empty layer
+  // strands no one.
   const empty = ads.length === 0 && takeover === undefined && popup === undefined
     && poster === undefined && scare === undefined && speed === undefined
-  if (empty && !anyOn) return null
+  if (empty) return null
   return createPortal(
     <div
       style={{
@@ -583,13 +555,6 @@ export function AdLayer(props: AdLayerProps) {
           onMisfire={() => setTakeover(poster)}
           controls={controls}
         />
-      )}
-      {/* The poster carries these in its title bar; the bottom bar is the
-          fallback for the minutes it is not on screen. */}
-      {poster === undefined && (
-        <div style={controlBarStyle}>
-          <AdControls {...controls} />
-        </div>
       )}
       {takeover !== undefined && (
         <Lightbox

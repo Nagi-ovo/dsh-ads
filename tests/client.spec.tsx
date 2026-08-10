@@ -17,6 +17,7 @@ import type { AdCreative } from '../src/client/types.ts'
 import type { SpawnConfig } from '../src/client/schedule.ts'
 import { LEVELS } from '../src/client/VirusToast.tsx'
 import { clearPersisted } from '../src/client/persist.ts'
+import { resetRetired } from '../src/client/retire.ts'
 import { AdsSection } from '../src/client/AdsSection.tsx'
 import { GamePoster } from '../src/client/GamePoster.tsx'
 import { DEFAULT_SETTINGS } from '../src/client/settings.ts'
@@ -41,6 +42,7 @@ beforeEach(() => {
   // Stored settings live in a module-level mirror that outlives a render, so
   // without this each test would inherit whatever the last one switched off.
   clearPersisted()
+  resetRetired()
   vi.useFakeTimers()
   host = document.createElement('div')
   document.body.append(host)
@@ -163,9 +165,23 @@ function flipSwitch(label: string): void {
   panel.remove()
 }
 
-/** The layer's own "关闭所有广告" control, if it is mounted. */
-function nukeButton(): HTMLButtonElement | undefined {
-  return [...document.querySelectorAll('button')].find((b) => b.textContent?.includes('关闭所有广告'))
+/**
+ * Press the settings page's "close everything for now" button.
+ *
+ * It lives in the host's settings dialog, not over the transcript: nothing of
+ * this plugin's own floats there any more.
+ */
+function pressNuke(): void {
+  const panel = document.createElement('div')
+  document.body.append(panel)
+  const settingsRoot = createRoot(panel)
+  act(() => { settingsRoot.render(<AdsSection />) })
+  act(() => {
+    [...panel.querySelectorAll('button')]
+      .find((b) => b.textContent?.includes('立刻关闭所有广告'))?.click()
+  })
+  act(() => { settingsRoot.unmount() })
+  panel.remove()
 }
 
 describe('AdLayer', () => {
@@ -174,12 +190,11 @@ describe('AdLayer', () => {
     expect(banners()).toHaveLength(FAST.maxAds)
   })
 
-  it('retires for the rest of the page load when 关闭所有广告 is clicked', () => {
+  it('retires for the rest of the page load when 关闭所有广告 is pressed', () => {
     mount()
     expect(banners().length).toBeGreaterThan(0)
-    act(() => { nukeButton()?.click() })
+    pressNuke()
     expect(banners()).toHaveLength(0)
-    expect(nukeButton()).toBeUndefined()
     // The growth ticker must not resurrect anything: this control is the one
     // honest exit, so a later tick bringing banners back would be the bug.
     tick(600_000)
@@ -255,7 +270,7 @@ describe('AdLayer', () => {
     act(() => {
       [...document.querySelectorAll('button')].find((b) => b.textContent === '暂不处理')?.click()
     })
-    act(() => { nukeButton()?.click() })
+    pressNuke()
     expect(document.body.textContent).not.toContain(LEVELS[1]!.headline)
   })
 
@@ -294,14 +309,6 @@ describe('AdLayer', () => {
     expect(banners().length).toBeGreaterThan(0)
   })
 
-  it('keeps the controls reachable while the poster is off screen', () => {
-    // The poster hosts the controls in its title bar; with no poster mounted,
-    // the bottom bar has to stand in, or a user who closed it is stuck with
-    // whatever mode they were in.
-    mount()
-    expect(nukeButton()).toBeDefined()
-  })
-
   it('remembers which placements are switched off', () => {
     // The whole point of moving these into storage: a gutter switched off has
     // to stay off, including across the layer being torn down and remounted.
@@ -329,11 +336,13 @@ describe('AdLayer', () => {
     expect(layer()?.style.visibility).toBe('visible')
   })
 
-  it('keeps the honest exit floating even with the settings page elsewhere', () => {
-    // "关闭所有广告" is the one control that cannot move into the settings
-    // dialog: it lasts until reload rather than being remembered.
+  it('puts nothing of its own over the transcript', () => {
+    // Every control moved into the host's settings dialog or the poster's own
+    // title bar. A floating strip of the plugin's chrome was the one thing on
+    // screen that was neither an advertisement nor part of the app.
     mount()
-    expect(nukeButton()).toBeDefined()
+    expect(document.body.textContent).not.toContain('关闭所有广告')
+    expect(document.body.textContent).not.toContain('广告设置')
   })
 
   it('leaves the slot empty for the cooldown, then refills it', () => {

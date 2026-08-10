@@ -1,10 +1,11 @@
 /**
- * The settings menu inside the poster, and the floating "enough" button.
+ * The settings menu inside the poster.
  *
- * The menu is the joke version: a real control panel living inside an
- * advertisement, in the poster's own oxblood-and-gold chrome. The findable
- * version is the page this plugin contributes to the host's settings dialog —
- * see [AdsSection.tsx](./AdsSection.tsx). Both write the same stored object.
+ * The joke version: a real control panel living inside an advertisement, in
+ * the poster's own oxblood-and-gold chrome. The findable version is the page
+ * this plugin contributes to the host's settings dialog — see
+ * [AdsSection.tsx](./AdsSection.tsx). Both write the same stored object, and
+ * nothing of this plugin's own floats over the transcript any more.
  *
  * @module
  */
@@ -130,36 +131,5 @@ export function AdSettingsMenu({ settings, onChange, onNuke, onPick }: AdControl
       <div style={{ ...headingStyle, borderTop: '1px solid rgba(201, 162, 39, 0.4)', marginTop: 2 }}>本次会话</div>
       {extras.map((item) => render(item, false))}
     </div>
-  )
-}
-
-const barButtonStyle: CSSProperties = {
-  padding: '2px 8px',
-  border: '1px solid rgba(128, 128, 128, 0.5)',
-  borderRadius: 3,
-  background: 'rgba(240, 240, 240, 0.94)',
-  color: '#444',
-  fontSize: 11,
-  fontFamily: 'system-ui, sans-serif',
-  lineHeight: '16px',
-  whiteSpace: 'nowrap',
-  cursor: 'pointer',
-}
-
-/**
- * The floating escape hatch.
- *
- * Deliberately one button. The placement switches moved to the host's settings
- * dialog the moment there was a real page for them, and a second copy floating
- * over the transcript is just clutter. What cannot move there is this: it is a
- * "not right now" that lasts until reload, and an unpersisted action sitting
- * among persisted switches would read as a setting that quietly forgets itself.
- *
- * @param props - see {@link AdControlsProps}; only `onNuke` is used.
- * @returns the bar.
- */
-export function AdControls({ onNuke }: AdControlsProps) {
-  return (
-    <button type="button" style={barButtonStyle} onClick={onNuke}>🚫 关闭所有广告</button>
   )
 }
