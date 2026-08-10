@@ -97,3 +97,24 @@ export function usePersisted<T>(key: string, initial: T): [T, (next: T) => void]
   }, [key, read])
   return [value, store]
 }
+
+/**
+ * Forget every stored preference.
+ *
+ * The honest counterpart to {@link usePersisted}'s setter: without it there is
+ * no way back to a clean slate, because the in-memory mirror survives even
+ * where storage does not. Tests need one, and so would any future "reset to
+ * defaults" control.
+ */
+export function clearPersisted(): void {
+  for (const key of memory.keys()) {
+    try {
+      localStorage.removeItem(`dsh-ads:${key}`)
+    } catch {
+      // Swallowed: storage that cannot be written cannot be holding anything
+      // to clear either, and the memory mirror below is the real state.
+    }
+  }
+  memory.clear()
+  dispatchEvent(new CustomEvent(CHANGED, { detail: '' }))
+}

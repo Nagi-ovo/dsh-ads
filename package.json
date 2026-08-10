@@ -61,7 +61,8 @@
     "schemastery": "link:../../.dsh/source/current/vendor/schemastery",
     "tsdown": "^0.22.2",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.1"
+    "vitest": "^4.1.1",
+    "@deepseek-ai/dsh-client-ui-settings": "link:../../.dsh/source/current/packages/client/ui-settings"
   },
   "license": "BSD-3-Clause"
 }

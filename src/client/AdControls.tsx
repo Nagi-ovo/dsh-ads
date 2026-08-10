@@ -1,63 +1,42 @@
 /**
- * The three honest controls: mute, solo, and the one button that really does
- * close everything.
+ * The settings menu, and the bar that opens it when the poster is away.
  *
- * Shared by two hosts in two shapes. Inside the poster's ⚙ they render as a
- * proper popover menu — one item per row, room for a label — because three
- * buttons crammed across a 300px title bar is unreadable. When the poster is
- * off-screen the layer falls back to a compact row along the bottom edge.
- * Either way they stay reachable, which is the point: a mute button you cannot
- * find is not a mute button.
+ * One switch per placement, plus the two things that are not placements: mute,
+ * and the one button that really does end the layer. Rendered in the poster's
+ * own oxblood-and-gold chrome, because a tasteful system menu hanging off a
+ * 火爆开服 title bar read like a different application had leaked in.
+ *
+ * The menu has two hosts and must be reachable from both: the poster's ⚙ when
+ * it is on screen, and the bottom bar's ⚙ when it is not. Switching the poster
+ * off through its own menu would otherwise strand every other switch.
+ *
+ * @module
  */
 
 import { useState, type CSSProperties } from 'react'
+import { PLACEMENTS, isSolo, toggleSolo, type AdSettings } from './settings.ts'
 
-/** How the cluster is laid out. */
-export type ControlsLayout = 'menu' | 'row'
-
-/** Props for the control cluster. */
+/** Props shared by the menu and the bar. */
 export interface AdControlsProps {
-  /** Whether pop-up sounds are currently suppressed. */
-  readonly muted: boolean
-  /** Toggle sound. */
-  readonly onToggleMute: () => void
-  /** Whether only the poster is being shown. */
-  readonly solo: boolean
-  /** Toggle solo mode. */
-  readonly onToggleSolo: () => void
+  /** Current settings. */
+  readonly settings: AdSettings
+  /** Replace the settings. */
+  readonly onChange: (next: AdSettings) => void
   /** Retire the layer for this page load. */
   readonly onNuke: () => void
 }
 
-/** One row of the menu. */
-interface Item {
-  /** Leading glyph. */
-  readonly icon: string
-  /** Row label. */
-  readonly label: string
-  /** Row action. */
-  readonly onClick: () => void
+const panelStyle: CSSProperties = {
+  minWidth: 186,
+  display: 'flex',
+  flexDirection: 'column',
+  // Same oxblood and gold as the poster's title bar, and square like its frame.
+  background: 'linear-gradient(#6b1414, #3d0a0a)',
+  border: '2px solid #c9a227',
+  overflow: 'hidden',
 }
 
-const rowButtonStyle: CSSProperties = {
-  padding: '2px 8px',
-  border: '1px solid rgba(128, 128, 128, 0.5)',
-  borderRadius: 3,
-  background: 'rgba(240, 240, 240, 0.94)',
-  color: '#444',
-  fontSize: 11,
-  fontFamily: 'system-ui, sans-serif',
-  lineHeight: '16px',
-  whiteSpace: 'nowrap',
-  cursor: 'pointer',
-}
-
-/**
- * Menu rows wear the poster's own chrome — gold on oxblood, square corners,
- * heavy type. A tasteful system menu hanging off a 火爆开服 title bar looked
- * like a different application had leaked into the ad.
- */
-const menuItemStyle: CSSProperties = {
+const itemStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   gap: 8,
@@ -76,52 +55,126 @@ const menuItemStyle: CSSProperties = {
   cursor: 'pointer',
 }
 
+const headingStyle: CSSProperties = {
+  padding: '5px 11px 3px',
+  color: 'rgba(255, 215, 106, 0.6)',
+  fontSize: 10,
+  fontFamily: 'system-ui, sans-serif',
+  fontWeight: 700,
+  letterSpacing: 1,
+  userSelect: 'none',
+}
+
+/** One row of the menu. */
+interface Item {
+  /** Leading glyph, or the checkbox state for a placement switch. */
+  readonly icon: string
+  /** Row label. */
+  readonly label: string
+  /** Row action. */
+  readonly onClick: () => void
+  /** Whether the row reads as destructive. */
+  readonly danger?: boolean
+}
+
 /**
- * Draw the controls.
- * @param props - the control state and callbacks, plus the layout to use.
- * @returns the menu rows or the compact button row.
+ * Draw the settings menu.
+ *
+ * @param props - see {@link AdControlsProps}; `onPick` fires after any row is
+ * chosen, so a host popover can close itself.
+ * @returns the panel.
  */
-export function AdControls(props: AdControlsProps & { readonly layout: ControlsLayout }) {
-  const { muted, onToggleMute, solo, onToggleSolo, onNuke, layout } = props
-  const [hovered, setHovered] = useState(-1)
-  const items: readonly Item[] = [
-    { icon: muted ? '🔇' : '🔊', label: muted ? '取消静音' : '静音广告', onClick: onToggleMute },
-    { icon: '🐋', label: solo ? '恢复全部广告' : '只留蓝鲸', onClick: onToggleSolo },
-    { icon: '🚫', label: '关闭所有广告', onClick: onNuke },
+export function AdSettingsMenu({ settings, onChange, onNuke, onPick }: AdControlsProps & { readonly onPick?: () => void }) {
+  const [hovered, setHovered] = useState('')
+  const switches: readonly Item[] = PLACEMENTS.map((row) => ({
+    icon: settings[row.key] ? '☑' : '☐',
+    label: `${row.icon} ${row.label}`,
+    onClick: () => onChange({ ...settings, [row.key]: !settings[row.key] }),
+  }))
+  const extras: readonly Item[] = [
+    {
+      icon: settings.muted ? '🔇' : '🔊',
+      label: settings.muted ? '取消静音' : '静音广告',
+      onClick: () => onChange({ ...settings, muted: !settings.muted }),
+    },
+    {
+      icon: '🐋',
+      label: isSolo(settings) ? '恢复全部广告' : '只留蓝鲸',
+      onClick: () => onChange(toggleSolo(settings)),
+    },
+    { icon: '🚫', label: '关闭所有广告', onClick: onNuke, danger: true },
   ]
-  if (layout === 'row') {
-    return (
-      <>
-        {items.map((item) => (
-          <button key={item.label} type="button" style={rowButtonStyle} onClick={item.onClick}>
-            {item.icon} {item.label}
-          </button>
-        ))}
-      </>
-    )
-  }
+  const render = (item: Item, first: boolean) => (
+    <button
+      key={item.label}
+      type="button"
+      style={{
+        ...itemStyle,
+        borderTop: first ? 0 : itemStyle.borderTop,
+        background: hovered === item.label ? 'rgba(201, 162, 39, 0.24)' : 'transparent',
+        color: item.danger === true ? '#ff9a7a' : itemStyle.color,
+      }}
+      onMouseEnter={() => setHovered(item.label)}
+      onMouseLeave={() => setHovered('')}
+      onClick={() => {
+        item.onClick()
+        onPick?.()
+      }}
+    >
+      <span aria-hidden="true" style={{ width: 14 }}>{item.icon}</span>
+      {item.label}
+    </button>
+  )
   return (
-    <>
-      {items.map((item, index) => (
-        <button
-          key={item.label}
-          type="button"
-          style={{
-            ...menuItemStyle,
-            // The first row sits straight under the panel's own border.
-            borderTop: index === 0 ? 0 : menuItemStyle.borderTop,
-            background: hovered === index ? 'rgba(201, 162, 39, 0.24)' : 'transparent',
-            // The destructive one reads as destructive.
-            color: index === items.length - 1 ? '#ff9a7a' : menuItemStyle.color,
-          }}
-          onMouseEnter={() => setHovered(index)}
-          onMouseLeave={() => setHovered(-1)}
-          onClick={item.onClick}
-        >
-          <span aria-hidden="true" style={{ width: 16 }}>{item.icon}</span>
-          {item.label}
-        </button>
-      ))}
-    </>
+    <div style={panelStyle}>
+      {/* The placement switches persist; everything under them does not, so
+          they are visually separated rather than mixed into one list. */}
+      <div style={headingStyle}>显示哪些广告（会记住）</div>
+      {switches.map((item) => render(item, false))}
+      <div style={{ ...headingStyle, borderTop: '1px solid rgba(201, 162, 39, 0.4)', marginTop: 2 }}>本次会话</div>
+      {extras.map((item) => render(item, false))}
+    </div>
+  )
+}
+
+const barButtonStyle: CSSProperties = {
+  padding: '2px 8px',
+  border: '1px solid rgba(128, 128, 128, 0.5)',
+  borderRadius: 3,
+  background: 'rgba(240, 240, 240, 0.94)',
+  color: '#444',
+  fontSize: 11,
+  fontFamily: 'system-ui, sans-serif',
+  lineHeight: '16px',
+  whiteSpace: 'nowrap',
+  cursor: 'pointer',
+}
+
+/**
+ * The fallback bar, for when the poster is not on screen to host the ⚙.
+ *
+ * @param props - see {@link AdControlsProps}.
+ * @returns the bar, with its own popover.
+ */
+export function AdControls(props: AdControlsProps) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div style={{ position: 'relative', display: 'flex', gap: 4 }}>
+      {open && (
+        <div style={{ position: 'absolute', bottom: '100%', left: 0, marginBottom: 6 }}>
+          <AdSettingsMenu {...props} onPick={() => setOpen(false)} />
+        </div>
+      )}
+      <button
+        type="button"
+        style={barButtonStyle}
+        aria-label="广告设置"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        ⚙ 广告设置
+      </button>
+      <button type="button" style={barButtonStyle} onClick={props.onNuke}>🚫 关闭所有广告</button>
+    </div>
   )
 }

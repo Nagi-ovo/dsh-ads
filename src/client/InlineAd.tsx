@@ -20,7 +20,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { AdCreative } from './types.ts'
 import { feedAd } from './feed.ts'
 import { resolveHitbox, VISUAL_CLOSE_PX } from './hitbox.ts'
-import { usePersisted } from './persist.ts'
+import { useAdSettings } from './settings.ts'
 
 /** Show an ad after every Nth turn. */
 export const INLINE_EVERY_N_TURNS = 2
@@ -87,14 +87,14 @@ const labelStyle: CSSProperties = {
  */
 export function InlineAd({ seq, sessionId, pool }: InlineAdProps) {
   const [closed, setClosed] = useState(false)
-  // Solo mode is set on the floating layer, in a different React tree; the
-  // preference is shared through storage so "keep only the poster" really does
-  // mean only the poster.
-  const [solo] = usePersisted('solo', false)
+  // The switch lives on the floating layer and on the host's settings page,
+  // both in different React trees; the persistence layer's same-document
+  // broadcast is what keeps this entry in step with them.
+  const [settings] = useAdSettings()
   // Keyed by session as well as seq: sequence numbers restart per conversation,
   // and without the session two different turns would share one assignment.
   const creative = feedAd(`${sessionId}:${seq}`, pool)
-  if (solo || closed || creative === undefined) return null
+  if (!settings.feed || closed || creative === undefined) return null
   // Seed from seq so the hitbox is stable per turn without any stored state.
   const hit = resolveHitbox((seq * 0.618_033) % 1)
   return (

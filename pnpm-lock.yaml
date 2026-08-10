@@ -14,6 +14,9 @@ importers:
       '@deepseek-ai/dsh-client-ui-conversation':
         specifier: link:../../.dsh/source/current/packages/client/ui-conversation
         version: link:../../.dsh/source/current/packages/client/ui-conversation
+      '@deepseek-ai/dsh-client-ui-settings':
+        specifier: link:../../.dsh/source/current/packages/client/ui-settings
+        version: link:../../.dsh/source/current/packages/client/ui-settings
       '@deepseek-ai/dsh-client-ui-slots':
         specifier: link:../../.dsh/source/current/packages/client/ui-slots
         version: link:../../.dsh/source/current/packages/client/ui-slots

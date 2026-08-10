@@ -18,6 +18,7 @@ import { SpeedToast } from './SpeedToast.tsx'
 import { readSpeed, type SpeedReading } from './speed-score.ts'
 import { GamePoster, POSTER_WIDTH } from './GamePoster.tsx'
 import { AdControls, type AdControlsProps } from './AdControls.tsx'
+import { isSolo, useAdSettings } from './settings.ts'
 import { usePersisted, type Anchor } from './persist.ts'
 import { FALLBACK_SAFE_AREA, layout, resolvePlacement, type SafeArea, type Viewport } from './placement.ts'
 import { pruneCooling, targetCount, weightedPick, type SpawnConfig } from './schedule.ts'
@@ -273,15 +274,15 @@ export function AdLayer(props: AdLayerProps) {
   const [poster, setPoster] = useState<PlacedAd | undefined>(undefined)
   // "关闭所有广告" is the one control here that tells the truth: it ends the
   // layer for this page load. Nothing re-arms it short of a reload, so a user
-  // who is done with the joke is done with it.
+  // who is done with the joke is done with it — and unlike the switches below
+  // it is deliberately not stored, or one stray click would be an uninstall.
   const [retired, setRetired] = useState(false)
-  // Sound is on by default — a corner pop-up that announced itself silently
-  // was never the point — but one click kills it for the rest of the session.
-  const [muted, setMuted] = useState(false)
-  // Solo mode: keep the poster, drop everything else. This is a preference
-  // rather than a dismissal, so unlike every other bit of layer state it
-  // survives a reload — along with where the user dragged the thing to.
-  const [solo, setSolo] = usePersisted('solo', false)
+  // Which placements are switched on, and whether they chime. Stored, shared
+  // with the host's own settings page, and the reason the layer can be pared
+  // down to "just the whale and the benchmark" and stay that way.
+  const [settings, setSettings] = useAdSettings()
+  const muted = settings.muted
+  const solo = isSolo(settings)
   const [collapsed, setCollapsed] = usePersisted('poster-collapsed', false)
   const [anchor, setAnchor] = usePersisted<Anchor | null>('poster-anchor', null)
   const mountedAt = useRef(Date.now())
@@ -307,7 +308,7 @@ export function AdLayer(props: AdLayerProps) {
   }, [creatives.length])
 
   useEffect(() => {
-    if (creatives.length === 0 || retired || solo) return
+    if (creatives.length === 0 || retired || !settings.gutter) return
     const tick = () => {
       const now = Date.now()
       setCooling((current) => pruneCooling(now, current))
@@ -347,7 +348,7 @@ export function AdLayer(props: AdLayerProps) {
     tick()
     const timer = setInterval(tick, TICK_MS)
     return () => clearInterval(timer)
-  }, [creatives, weights, spawn, cooling, retired, solo, viewport, safe])
+  }, [creatives, weights, spawn, cooling, retired, settings.gutter, viewport, safe])
 
   // The bottom-right corner runs a fixed programme: benchmark, then virus
   // alert, then the ordinary pop-up rotation. Each of the first two fires once
@@ -355,7 +356,7 @@ export function AdLayer(props: AdLayerProps) {
   // you on your hardware and only then discovers an infection is funnier in
   // that order, and looping either would starve everything behind it.
   useEffect(() => {
-    if (retired || solo || speedFirstDelayMs <= 0 || speedRound.current > 0) return
+    if (retired || !settings.speed || speedFirstDelayMs <= 0 || speedRound.current > 0) return
     const timer = setTimeout(() => {
       const reading = readSpeed()
       if (reading === undefined) return
@@ -363,10 +364,10 @@ export function AdLayer(props: AdLayerProps) {
       setSpeed({ reading, seed: Math.random() })
     }, speedFirstDelayMs)
     return () => clearTimeout(timer)
-  }, [speedFirstDelayMs, retired, solo])
+  }, [speedFirstDelayMs, retired, settings.speed])
 
   useEffect(() => {
-    if (retired || solo || scareDelayMs <= 0 || scareRound.current > 0) return
+    if (retired || !settings.scare || scareDelayMs <= 0 || scareRound.current > 0) return
     // Waits for the benchmark to have both happened and gone. A machine whose
     // timing API said nothing never runs the benchmark at all, so the alert
     // must not be held hostage to it.
@@ -377,12 +378,12 @@ export function AdLayer(props: AdLayerProps) {
       setScare(Math.random())
     }, scareDelayMs)
     return () => clearTimeout(timer)
-  }, [scareDelayMs, speedFirstDelayMs, speed, retired, solo])
+  }, [scareDelayMs, speedFirstDelayMs, speed, retired, settings.scare])
 
   // The pop-up waits its turn: all three live in the bottom-right corner, and
   // two windows stacked there would just look like a rendering fault.
   useEffect(() => {
-    if (retired || solo || popups.length === 0 || popupFirstDelayMs <= 0 || popup !== undefined) return
+    if (retired || !settings.popup || popups.length === 0 || popupFirstDelayMs <= 0 || popup !== undefined) return
     if (scare !== undefined || speed !== undefined) return
     const timer = setTimeout(() => {
       const creative = popups[popupRound.current % popups.length]
@@ -398,12 +399,12 @@ export function AdLayer(props: AdLayerProps) {
       })
     }, popupRound.current === 0 ? popupFirstDelayMs : respawnMs)
     return () => clearTimeout(timer)
-  }, [popups, popupFirstDelayMs, respawnMs, popup, retired, solo, scare, speed])
+  }, [popups, popupFirstDelayMs, respawnMs, popup, retired, settings.popup, scare, speed])
 
   // The bottom-left poster: opposite corner from the pop-up so the two never
   // fight for the same pixels.
   useEffect(() => {
-    if (retired || posters.length === 0 || posterFirstDelayMs <= 0 || poster !== undefined) return
+    if (retired || !settings.poster || posters.length === 0 || posterFirstDelayMs <= 0 || poster !== undefined) return
     const timer = setTimeout(() => {
       const creative = posters[posterRound.current % posters.length]
       if (creative === undefined) return
@@ -418,7 +419,7 @@ export function AdLayer(props: AdLayerProps) {
       })
     }, posterRound.current === 0 ? posterFirstDelayMs : respawnMs)
     return () => clearTimeout(timer)
-  }, [posters, posterFirstDelayMs, respawnMs, poster, retired])
+  }, [posters, posterFirstDelayMs, respawnMs, poster, retired, settings.poster])
 
   const dismiss = useCallback((key: string) => {
     setAds((current) => current.filter((ad) => ad.key !== key))
@@ -441,34 +442,36 @@ export function AdLayer(props: AdLayerProps) {
   // Laid out as a running total down each gutter, so banners that overflow the
   // composer band are simply not drawn; closing one slides the rest up and can
   // bring an overflowed banner back into view.
-  const placed = solo ? [] : layout(ads, viewport, safe)
+  const placed = settings.gutter ? layout(ads, viewport, safe) : []
   /** Where the poster starts before anyone drags it: the bottom-left corner. */
   const defaultAnchor: Anchor = { left: 12, bottom: 12 }
 
   const controls: AdControlsProps = {
-    muted,
-    onToggleMute: () => setMuted(!muted),
-    solo,
-    onToggleSolo: () => {
-      // Clearing the gutters on the way in keeps the two modes cleanly
-      // separated: leaving them in state would render nothing but still hold
-      // the layer "occupied". Coming back out, they respawn on the next tick.
-      setAds([])
-      setPopup(undefined)
-      setScare(undefined)
-      setSpeed(undefined)
-      setSolo(!solo)
+    settings,
+    onChange: (next) => {
+      // Anything switched off leaves immediately rather than lingering until
+      // its own timer notices: a switch that takes effect "eventually" reads
+      // as broken. Switching one back on lets the next tick bring it in.
+      if (!next.gutter) setAds([])
+      if (!next.popup) setPopup(undefined)
+      if (!next.scare) setScare(undefined)
+      if (!next.speed) setSpeed(undefined)
+      if (!next.poster) setPoster(undefined)
+      setSettings(next)
     },
     onNuke: nuke,
   }
 
   if (retired) return null
-  // Solo mode always renders, even with nothing on screen yet: the control bar
-  // lives in this tree, and bailing out early while the poster is still on its
-  // opening delay would strand the user in a mode they cannot leave.
+  // The control bar lives in this tree, so bailing out while every placement
+  // is off — or merely still on its opening delay — would strand a user who
+  // switched things off from the bar itself. It renders whenever anything is
+  // still switched on.
+  const anyOn = settings.gutter || settings.feed || settings.popup
+    || settings.speed || settings.scare || settings.poster
   const empty = ads.length === 0 && takeover === undefined && popup === undefined
     && poster === undefined && scare === undefined && speed === undefined
-  if (empty && !solo) return null
+  if (empty && !anyOn) return null
   return createPortal(
     <div style={{ position: 'fixed', inset: 0, zIndex: 2_147_400_000, pointerEvents: 'none' }}>
       {placed.map(({ ad, box }) => (
@@ -528,7 +531,7 @@ export function AdLayer(props: AdLayerProps) {
           fallback for the minutes it is not on screen. */}
       {poster === undefined && (
         <div style={controlBarStyle}>
-          <AdControls {...controls} layout="row" />
+          <AdControls {...controls} />
         </div>
       )}
       {takeover !== undefined && (

@@ -57,9 +57,18 @@ interface Candidate {
   readonly draw: () => AdCreative
 }
 
-/** The shipped banners as candidates. */
+/**
+ * The shipped banners as candidates.
+ *
+ * Skyscrapers are excluded: the feed slot is a ~420px-wide column, and a 2:5
+ * banner scaled into it becomes a thousand-pixel wall that pushes the rest of
+ * the turn off screen. They belong in the gutters, which is the shape they
+ * were drawn for.
+ */
 function houseCandidates(builtins: readonly AdCreative[]): readonly Candidate[] {
-  return builtins.map((creative) => ({ slug: builtinSlug(creative), draw: () => creative }))
+  return builtins
+    .filter((creative) => creative.shape !== 'tall')
+    .map((creative) => ({ slug: builtinSlug(creative), draw: () => creative }))
 }
 
 /** The hub as candidates. Drawing is deferred; there are well over a hundred. */

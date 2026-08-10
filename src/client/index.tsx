@@ -8,6 +8,8 @@
  * - The chat view's turn-tail chain mounts the feed ad *inside* the
  *   transcript, so the reading column carries inventory without anything
  *   floating over it.
+ * - The settings dialog gets a page of its own, which is where the placement
+ *   switches actually live; the in-ad ⚙ menu is a joke, not a control panel.
  */
 
 import { useMemo } from 'react'
@@ -16,7 +18,10 @@ import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: pulls the `conversation.input.dock` and `conversation.chat.turnTail`
 // SlotMap declarations.
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+// Type-only: pulls the `settings.section` SlotMap declaration.
+import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import { AdLayer } from './AdLayer.tsx'
+import { AdsSection } from './AdsSection.tsx'
 import { InlineAd, turnCarriesAd } from './InlineAd.tsx'
 import { BUILTIN_ADS, BUILTIN_POPUPS, BUILTIN_POSTERS } from './builtin-ads.ts'
 import { useSponsoredAds } from './registry.ts'
@@ -106,6 +111,13 @@ export function apply(ctx: ClientContext): void {
   ctx.slots.inject('conversation.input.dock', () => ctx.slots.register(
     { name: 'conversation.input.dock', id: 'dsh-ads-layer', order: 90 },
     AdDockEntry,
+  ))
+  // A page of its own in the host's settings dialog, beside 通用设置 and 模型.
+  // The poster's ⚙ is part of the joke, but it is the wrong place to *find*
+  // settings — and it vanishes the moment the poster is switched off.
+  ctx.slots.inject('settings.section', () => ctx.slots.register(
+    { name: 'settings.section', id: 'dsh-ads', order: 90, label: () => '广告' },
+    AdsSection,
   ))
   ctx.slots.inject('conversation.chat.turnTail', () => ctx.slots.register(
     {

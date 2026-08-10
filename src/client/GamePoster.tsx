@@ -9,7 +9,7 @@
  */
 
 import { useEffect, useState, type CSSProperties } from 'react'
-import { AdControls, type AdControlsProps } from './AdControls.tsx'
+import { AdSettingsMenu, type AdControlsProps } from './AdControls.tsx'
 import type { AdCreative } from './types.ts'
 import type { Anchor } from './persist.ts'
 import { useDrag } from './useDrag.ts'
@@ -76,15 +76,6 @@ const settingsPanelStyle: CSSProperties = {
   bottom: '100%',
   right: -2,
   marginBottom: 4,
-  minWidth: 164,
-  display: 'flex',
-  flexDirection: 'column',
-  // Same oxblood and gold as the title bar it hangs off, and square like the
-  // card's own frame — the panel should read as part of the poster, not as a
-  // system menu that wandered in.
-  background: 'linear-gradient(#6b1414, #3d0a0a)',
-  border: '2px solid #c9a227',
-  overflow: 'hidden',
 }
 
 const chromeButtonStyle: CSSProperties = {
@@ -117,15 +108,6 @@ export function GamePoster(props: GamePosterProps) {
   const [entered, setEntered] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const hit = resolveHitbox(seed, POSTER_HITBOX_PX)
-  // Every row is a complete choice, so the panel closes behind it. Leaving it
-  // open covered the artwork it belongs to and made a one-shot menu look like
-  // a settings page the user still had to dismiss.
-  const controls: AdControlsProps = {
-    ...props.controls,
-    onToggleMute: () => { setSettingsOpen(false); props.controls.onToggleMute() },
-    onToggleSolo: () => { setSettingsOpen(false); props.controls.onToggleSolo() },
-    onNuke: () => { setSettingsOpen(false); props.controls.onNuke() },
-  }
   const height = POSTER_WIDTH * (creative.height / creative.width)
   const drag = useDrag(anchor, onMove, { width: POSTER_WIDTH, height: (collapsed ? 0 : height) + CHROME_H })
   // No retract timer: it stays until the user finds the real hitbox.
@@ -175,7 +157,10 @@ export function GamePoster(props: GamePosterProps) {
                 style={settingsPanelStyle}
                 onPointerDown={(event) => event.stopPropagation()}
               >
-                <AdControls {...controls} layout="menu" />
+                {/* Flipping a switch closes the panel: it covers the artwork
+                    it belongs to, and a one-shot menu that lingers reads as a
+                    settings page the user still has to dismiss. */}
+                <AdSettingsMenu {...props.controls} onPick={() => setSettingsOpen(false)} />
               </div>
             )}
           </span>

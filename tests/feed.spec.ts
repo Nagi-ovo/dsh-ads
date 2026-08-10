@@ -15,6 +15,7 @@ import type { AdCreative } from '../src/client/types.ts'
 const BUILTINS: readonly AdCreative[] = [
   { id: 'builtin-a', width: 900, height: 120, shape: 'wide', weight: 1, alt: '甲', src: 'data:,' },
   { id: 'builtin-b', width: 900, height: 120, shape: 'wide', weight: 1, alt: '乙', src: 'data:,' },
+  { id: 'builtin-tall', width: 300, height: 600, shape: 'tall', weight: 1, alt: '丙', src: 'data:,' },
 ]
 
 /** A hub larger than one conversation could ever get through. */
@@ -80,6 +81,13 @@ describe('feedAd', () => {
     // Sequence numbers restart per conversation, so the key has to carry the
     // session or the second conversation would inherit the first one's ads.
     expect(shown('other-session:4')).not.toBe(shown('another-session:4'))
+  })
+
+  it('never puts a skyscraper in the reading column', () => {
+    // The feed slot is a narrow column; a 2:5 banner scaled into it becomes a
+    // wall that pushes the rest of the turn off screen.
+    const run = Array.from({ length: 60 }, (_, i) => shown(`s:${i}`))
+    expect(run).not.toContain('builtin-tall')
   })
 
   it('shows nothing at all when there is no inventory', () => {

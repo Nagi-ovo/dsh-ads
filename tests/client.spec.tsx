@@ -16,6 +16,7 @@ import { AdLayer } from '../src/client/AdLayer.tsx'
 import type { AdCreative } from '../src/client/types.ts'
 import type { SpawnConfig } from '../src/client/schedule.ts'
 import { LEVELS } from '../src/client/VirusToast.tsx'
+import { clearPersisted } from '../src/client/persist.ts'
 
 /**
  * Two flat banners: short enough that jsdom's 1024×768 viewport fits the whole
@@ -34,6 +35,9 @@ let host: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
+  // Stored settings live in a module-level mirror that outlives a render, so
+  // without this each test would inherit whatever the last one switched off.
+  clearPersisted()
   vi.useFakeTimers()
   host = document.createElement('div')
   document.body.append(host)
@@ -132,6 +136,19 @@ function closeScare(): HTMLButtonElement | undefined {
 function closeSpeed(): HTMLButtonElement | undefined {
   return [...document.querySelectorAll('button')]
     .find((b) => b.getAttribute('aria-label') === '关闭跑分结果')
+}
+
+/** Open (or close) the settings popover from whichever host is showing its ⚙. */
+function openSettings(): void {
+  act(() => {
+    [...document.querySelectorAll('button')]
+      .find((b) => b.getAttribute('aria-label') === '广告设置')?.click()
+  })
+}
+
+/** A settings-menu row by its label text. */
+function menuItem(text: string): HTMLButtonElement | undefined {
+  return [...document.querySelectorAll('button')].find((b) => b.textContent?.includes(text))
 }
 
 /** The layer's own "关闭所有广告" control, if it is mounted. */
@@ -254,13 +271,13 @@ describe('AdLayer', () => {
   it('drops every other ad in solo mode and puts them back on the way out', () => {
     mount()
     expect(banners().length).toBeGreaterThan(0)
-    const solo = () => [...document.querySelectorAll('button')]
-      .find((b) => b.textContent?.includes('只留蓝鲸') || b.textContent?.includes('恢复全部广告'))
-    act(() => { solo()?.click() })
+    openSettings()
+    act(() => { menuItem('只留蓝鲸')?.click() })
     expect(banners()).toHaveLength(0)
     tick(30_000)
     expect(banners()).toHaveLength(0)
-    act(() => { solo()?.click() })
+    openSettings()
+    act(() => { menuItem('恢复全部广告')?.click() })
     tick(3000)
     expect(banners().length).toBeGreaterThan(0)
   })
@@ -273,13 +290,26 @@ describe('AdLayer', () => {
     expect(nukeButton()).toBeDefined()
   })
 
-  it('mutes and unmutes from the control bar', () => {
+  it('mutes and unmutes from the settings menu', () => {
     mount()
-    const mute = () => [...document.querySelectorAll('button')]
-      .find((b) => b.textContent?.includes('静音'))
-    expect(mute()?.textContent).toContain('静音广告')
-    act(() => { mute()?.click() })
-    expect(mute()?.textContent).toContain('取消静音')
+    openSettings()
+    expect(menuItem('静音广告')).toBeDefined()
+    act(() => { menuItem('静音广告')?.click() })
+    openSettings()
+    expect(menuItem('取消静音')).toBeDefined()
+  })
+
+  it('remembers which placements are switched off', () => {
+    // The whole point of moving these into storage: a gutter switched off has
+    // to stay off, including across the layer being torn down and remounted.
+    mount()
+    openSettings()
+    act(() => { menuItem('两侧广告栏')?.click() })
+    expect(banners()).toHaveLength(0)
+    act(() => root.unmount())
+    root = createRoot(host)
+    mount()
+    expect(banners()).toHaveLength(0)
   })
 
   it('leaves the slot empty for the cooldown, then refills it', () => {
