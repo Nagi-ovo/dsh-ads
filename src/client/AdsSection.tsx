@@ -42,6 +42,21 @@ const labelStyle: CSSProperties = { fontSize: 15, lineHeight: 1.4 }
 
 const blurbStyle: CSSProperties = { fontSize: 13, lineHeight: 1.5, opacity: 0.55, marginTop: 2 }
 
+/** Where the "who made this" line points. */
+const REPO_URL = 'https://github.com/dsh-external/dsh-ads'
+
+const sourceStyle: CSSProperties = {
+  marginBottom: 14,
+  padding: '10px 12px',
+  borderRadius: 8,
+  background: 'rgba(128, 128, 128, 0.12)',
+  fontSize: 13,
+  lineHeight: 1.6,
+  opacity: 0.8,
+}
+
+const linkStyle: CSSProperties = { color: 'inherit', textDecoration: 'underline', textUnderlineOffset: 2 }
+
 /** Props for one switch. */
 interface ToggleProps {
   /** Whether it is on. */
@@ -105,6 +120,18 @@ export function AdsSection() {
   const set = (patch: Partial<AdSettings>) => setSettings({ ...settings, ...patch })
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
+      {/* Provenance first. The page borrows the host's settings chrome, so it
+          has to say plainly whose settings these are before anything else. */}
+      <div style={sourceStyle}>
+        <div>
+          本页由社区插件{' '}
+          <a href={REPO_URL} target="_blank" rel="noreferrer noopener" style={linkStyle}>
+            @dsh-external/dsh-ads
+          </a>{' '}
+          提供，非 DeepSeek 官方功能。
+        </div>
+        <div style={{ marginTop: 2 }}>广告内容纯属娱乐，均为虚构。</div>
+      </div>
       <div style={{ ...blurbStyle, marginBottom: 6, opacity: 0.6 }}>
         选择哪些广告位继续出现。这里的选择会记住，下次启动依然生效。
       </div>

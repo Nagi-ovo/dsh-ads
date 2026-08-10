@@ -116,7 +116,10 @@ export function apply(ctx: ClientContext): void {
   // The poster's ⚙ is part of the joke, but it is the wrong place to *find*
   // settings — and it vanishes the moment the poster is switched off.
   ctx.slots.inject('settings.section', () => ctx.slots.register(
-    { name: 'settings.section', id: 'dsh-ads', order: 90, label: () => '广告' },
+    // Labelled as third-party in the nav itself: this page sits between two
+    // first-party ones, and a settings entry that reads as official is the one
+    // place this plugin's joke would stop being obviously a joke.
+    { name: 'settings.section', id: 'dsh-ads', order: 90, label: () => '广告（非官方）' },
     AdsSection,
   ))
   ctx.slots.inject('conversation.chat.turnTail', () => ctx.slots.register(
