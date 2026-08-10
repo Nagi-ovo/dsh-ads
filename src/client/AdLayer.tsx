@@ -492,6 +492,8 @@ export function AdLayer(props: AdLayerProps) {
   if (empty) return null
   return createPortal(
     <div
+      // Any DOM scrubber that skips subtrees under this attribute skips ours too.
+      data-dsh-anti-ads
       style={{
         position: 'fixed',
         inset: 0,
