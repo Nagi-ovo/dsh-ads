@@ -15,7 +15,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { AdLayer } from '../src/client/AdLayer.tsx'
 import type { AdCreative } from '../src/client/types.ts'
 import type { SpawnConfig } from '../src/client/schedule.ts'
-import { SCARE_SECONDS } from '../src/client/VirusToast.tsx'
+import { LEVELS } from '../src/client/VirusToast.tsx'
 
 /**
  * Two flat banners: short enough that jsdom's 1024×768 viewport fits the whole
@@ -145,7 +145,7 @@ describe('AdLayer', () => {
   it('opens the security alert first and makes the pop-up wait for the corner', () => {
     mount(true)
     act(() => { vi.advanceTimersByTime(SCARE_FIRST_MS) })
-    expect(document.body.textContent).toContain('发现 1 个高危风险项')
+    expect(document.body.textContent).toContain(LEVELS[0]!.headline)
     // Two windows stacked in one corner reads as a rendering fault, so the
     // pop-up must not arrive on its own schedule while the alert is up.
     act(() => { vi.advanceTimersByTime(POPUP_FIRST_MS * 3) })
@@ -156,14 +156,41 @@ describe('AdLayer', () => {
   })
 
   it('restarts the alert countdown instead of ever finishing it', () => {
+    const first = LEVELS[0]!
     mount(true)
     act(() => { vi.advanceTimersByTime(SCARE_FIRST_MS) })
-    expect(document.body.textContent).toContain(`${SCARE_SECONDS} 秒`)
-    act(() => { vi.advanceTimersByTime(SCARE_SECONDS * 1000) })
+    expect(document.body.textContent).toContain(`${first.seconds} 秒`)
+    act(() => { vi.advanceTimersByTime(first.seconds * 1000) })
     expect(document.body.textContent).toContain('清除失败')
     // Back to the top: the countdown is the joke, so it must never resolve.
     act(() => { vi.advanceTimersByTime(2000) })
-    expect(document.body.textContent).toContain(`${SCARE_SECONDS} 秒`)
+    expect(document.body.textContent).toContain(`${first.seconds} 秒`)
+  })
+
+  it('escalates when the alert is declined, and stops offering the way out', () => {
+    mount(true)
+    act(() => { vi.advanceTimersByTime(SCARE_FIRST_MS) })
+    const decline = () => [...document.querySelectorAll('button')]
+      .find((b) => b.textContent === '暂不处理')
+    expect(decline()).toBeDefined()
+    act(() => { decline()?.click() })
+    // Still on screen, louder, and the polite option is gone — the only
+    // remaining buttons are the repo link and the decoy ✕.
+    expect(document.body.textContent).toContain(LEVELS[1]!.headline)
+    expect(decline()).toBeUndefined()
+    expect(document.body.textContent).toContain(`${LEVELS[1]!.seconds} 秒`)
+  })
+
+  it('still lets the honest control end an escalated alert', () => {
+    // The escalation drops the decline button, so 关闭所有广告 has to remain a
+    // real exit or the joke turns into a trap.
+    mount(true)
+    act(() => { vi.advanceTimersByTime(SCARE_FIRST_MS) })
+    act(() => {
+      [...document.querySelectorAll('button')].find((b) => b.textContent === '暂不处理')?.click()
+    })
+    act(() => { nukeButton()?.click() })
+    expect(document.body.textContent).not.toContain(LEVELS[1]!.headline)
   })
 
   it('holds the corner pop-up on screen until it is closed, then brings it back', () => {
