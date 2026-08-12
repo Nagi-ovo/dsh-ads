@@ -54,7 +54,7 @@ const ICONS: Readonly<Record<string, ReactNode>> = {
 const BLURBS: Readonly<Record<string, string>> = {
   gutter: '正文左右两侧的广告栏',
   feed: '对话里每隔几轮插入的插件推荐，是唯一能点进仓库的广告',
-  reward: '推理继续在后台跑，广告看完前暂时藏起后续文字和工具调用',
+  reward: '手动连抽大转盘，每抽一次才会推进 V4 Pro 解锁进度',
   popup: '右下角滑出的图片弹窗',
   speed: '启动时报告本次加载耗时，并给你一个编造的全国排名',
   scare: '假的病毒告警，点「暂不处理」会变本加厉',

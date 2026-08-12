@@ -19,8 +19,34 @@ import { useAdSettings } from './settings.ts'
 /** How long a response must still be streaming before the gate appears. */
 export const REWARD_GATE_DELAY_MS = 1_800
 
-/** Short rewarded-ad countdown; long enough to register, short enough to stay a joke. */
-export const REWARD_WATCH_SECONDS = 8
+/** Number of manual wheel spins needed to land on the advertised grand prize. */
+export const REWARD_SPINS_TO_UNLOCK = 8
+
+/** Full-speed wheel animation duration. */
+export const REWARD_SPIN_DURATION_MS = 720
+
+/** Fake unlock work shown one stage at a time. */
+const V4_UNLOCK_STAGES = [
+  '正式版资格匹配',
+  'V4 Pro 权重下载',
+  '超高速通道排队',
+  '尊贵身份激活',
+] as const
+
+/** Wheel wedges and the scripted near-misses that precede the grand prize. */
+const WHEEL_SEGMENTS = [
+  '谢谢参与',
+  '加速卡',
+  '0.01 元',
+  '提现券',
+  '10 金币',
+  '0.1 钻石',
+  '幸运碎片',
+  'V4 Pro',
+] as const
+
+/** Manual draws cycle through these consolation prizes before the final hit. */
+const CONSOLATION_RESULTS = WHEEL_SEGMENTS.slice(0, -1)
 
 /** One active gate and the DOM row whose tail it conceals. */
 interface GateTarget {
@@ -37,7 +63,7 @@ export interface InferenceRewardGateProps {
   /** Override for deterministic tests. */
   readonly delayMs?: number
   /** Override for deterministic tests. */
-  readonly watchSeconds?: number
+  readonly spinsToUnlock?: number
 }
 
 /** Return the newest Assistant row that is still receiving model output. */
@@ -108,7 +134,7 @@ function concealTail(target: GateTarget, onDetached: () => void): () => void {
 const cardStyle: CSSProperties = {
   position: 'relative',
   isolation: 'isolate',
-  minHeight: 286,
+  minHeight: 456,
   margin: '12px 0 18px',
   overflow: 'hidden',
   border: '2px solid #ffd35a',
@@ -133,26 +159,45 @@ const primaryButtonStyle: CSSProperties = {
   cursor: 'pointer',
 }
 
-/** Props for the visible countdown card. */
+/** Percentage for one sequential unlock stage. */
+function stageProgress(draws: number, requiredDraws: number, index: number): number {
+  if (requiredDraws <= 0) return 100
+  const stageDraws = requiredDraws / V4_UNLOCK_STAGES.length
+  const raw = ((draws - (index * stageDraws)) / stageDraws) * 100
+  return Math.round(Math.max(0, Math.min(100, raw)))
+}
+
+/** Script one near-miss per click, then put V4 Pro under the pointer. */
+function drawResult(draw: number, requiredDraws: number): string {
+  if (draw >= requiredDraws) return 'V4 Pro 正式版'
+  return CONSOLATION_RESULTS[(draw - 1) % CONSOLATION_RESULTS.length] ?? '谢谢参与'
+}
+
+/** Props for the visible prize-wheel card. */
 interface RewardCardProps {
   readonly creative: AdCreative
-  readonly seconds: number
+  readonly spinsToUnlock: number
   readonly onUnlock: () => void
 }
 
+/** Prize waiting for the wheel's transform transition to finish. */
+interface PendingDraw {
+  readonly draw: number
+  readonly result: string
+}
+
 /**
- * Draw the deliberately excessive cash-withdrawal creative.
+ * Draw the deliberately excessive V4 prize-wheel creative.
  *
- * @param props - artwork, countdown duration, and reveal action.
+ * @param props - artwork, required manual spins, and reveal action.
  * @returns the inline rewarded-ad card.
  */
-function RewardCard({ creative, seconds, onUnlock }: RewardCardProps) {
-  const [left, setLeft] = useState(seconds)
-  useEffect(() => {
-    if (left <= 0) return
-    const timer = setTimeout(() => setLeft((current) => Math.max(0, current - 1)), 1_000)
-    return () => clearTimeout(timer)
-  }, [left])
+function RewardCard({ creative, spinsToUnlock, onUnlock }: RewardCardProps) {
+  const requiredDraws = Math.max(0, spinsToUnlock)
+  const [draws, setDraws] = useState(0)
+  const [rotation, setRotation] = useState(0)
+  const [result, setResult] = useState<string | undefined>(undefined)
+  const [pending, setPending] = useState<PendingDraw | undefined>(undefined)
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onUnlock()
@@ -160,9 +205,56 @@ function RewardCard({ creative, seconds, onUnlock }: RewardCardProps) {
     addEventListener('keydown', onKeyDown)
     return () => removeEventListener('keydown', onKeyDown)
   }, [onUnlock])
-  const progress = seconds <= 0 ? 100 : Math.round(((seconds - left) / seconds) * 100)
+  const unlocked = draws >= requiredDraws
+  const spinning = pending !== undefined
+  const spin = () => {
+    if (spinning || unlocked) return
+    const nextDraw = draws + 1
+    const nextResult = drawResult(nextDraw, requiredDraws)
+    const segment = nextResult === 'V4 Pro 正式版'
+      ? WHEEL_SEGMENTS.length - 1
+      : WHEEL_SEGMENTS.indexOf(nextResult as typeof WHEEL_SEGMENTS[number])
+    const nextRotation = (Math.ceil(rotation / 360) * 360) + 1_080 + ((360 - (segment * 45)) % 360)
+    setResult(undefined)
+    setPending({ draw: nextDraw, result: nextResult })
+    setRotation(nextRotation)
+  }
+  const settleSpin = () => {
+    if (pending === undefined) return
+    setDraws(pending.draw)
+    setResult(pending.result)
+    setPending(undefined)
+  }
   return (
-    <section style={cardStyle} aria-label="推理激励广告" data-dsh-reward-gate>
+    <section style={cardStyle} aria-label="V4 Pro 正式版限时解锁" data-dsh-reward-gate>
+      <style>{`
+        .dsh-reward-layout {
+          display: grid;
+          grid-template-columns: minmax(270px, 1fr) 230px;
+          gap: 18px;
+          align-items: center;
+          padding: 22px 20px 18px;
+        }
+        .dsh-prize-wheel {
+          transition: transform ${REWARD_SPIN_DURATION_MS}ms cubic-bezier(.12,.68,.12,1);
+          will-change: transform;
+        }
+        @keyframes dsh-unlock-shine {
+          from { transform: translateX(-120%); }
+          to { transform: translateX(320%); }
+        }
+        .dsh-wheel-button:active { transform: translate(-50%, -48%) scale(.97); }
+        @media (max-width: 600px) {
+          .dsh-reward-layout { grid-template-columns: 1fr; padding: 18px 16px 16px; }
+          .dsh-wheel-panel { order: -1; }
+          .dsh-prize-wheel-wrap { width: 206px !important; height: 206px !important; }
+          .dsh-wheel-label { transform-origin: center 82px !important; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .dsh-prize-wheel { transition-duration: 1ms; }
+          .dsh-progress-shine { display: none; }
+        }
+      `}</style>
       <img
         src={creative.src}
         alt={creative.alt}
@@ -173,47 +265,139 @@ function RewardCard({ creative, seconds, onUnlock }: RewardCardProps) {
         aria-hidden="true"
         style={{
           position: 'absolute', inset: 0, zIndex: -1,
-          background: 'linear-gradient(90deg, rgba(116, 0, 19, 0.96) 0%, rgba(177, 0, 35, 0.86) 46%, rgba(177, 0, 35, 0.08) 76%)',
+          background: 'linear-gradient(90deg, rgba(116, 0, 19, 0.98) 0%, rgba(177, 0, 35, 0.93) 58%, rgba(116, 0, 19, 0.58) 100%)',
         }}
       />
-      <div style={{ width: 'min(57%, 430px)', minWidth: 270, padding: '22px 20px 18px' }}>
-        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1.2, color: '#ffe99a' }}>
-          推理激励广告 · 模型仍在后台工作
+      <div className="dsh-reward-layout">
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1.2, color: '#ffe99a' }}>
+            DeepSeek V4 Pro 正式版限时抽奖
+          </div>
+          <h2 style={{ margin: '6px 0 0', maxWidth: 430, fontSize: 26, lineHeight: 1.12, textShadow: '0 2px 0 #8c001d' }}>
+            转到 V4 Pro 正式版才算你赢
+          </h2>
+          <p style={{ margin: '7px 0 0', fontSize: 12, fontWeight: 700, color: '#fff2bd' }}>
+            每抽一次，解锁进度才会往前走
+          </p>
+          <div aria-live="polite" style={{ minHeight: 45, marginTop: 11, padding: '8px 11px', border: '1px solid rgba(255, 232, 134, 0.65)', borderRadius: 12, background: 'rgba(103, 0, 15, 0.62)' }}>
+            <div style={{ fontSize: 10, fontWeight: 800, color: '#ffd96a' }}>本轮结果</div>
+            <strong data-dsh-draw-result style={{ display: 'block', marginTop: 2, fontSize: 15 }}>
+              {spinning
+                ? '转盘飞转中…'
+                : result === undefined
+                  ? '大奖就在盘里，点一下试试'
+                  : result === 'V4 Pro 正式版'
+                    ? '抽中 V4 Pro 正式版'
+                    : `抽中 ${result}，还差一点`}
+            </strong>
+          </div>
+          <div style={{ marginTop: 11, padding: '10px 11px', borderRadius: 12, background: 'rgba(83, 0, 13, 0.56)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 7, fontSize: 11, fontWeight: 900, color: '#fff1a9' }}>
+              <span>V4 Pro 正式版解锁进度</span>
+              <span>{unlocked ? '全部完成' : `已抽 ${draws} 次`}</span>
+            </div>
+            <div style={{ display: 'grid', gap: 7 }}>
+              {V4_UNLOCK_STAGES.map((label, index) => {
+                const progress = stageProgress(draws, requiredDraws, index)
+                return (
+                  <div key={label}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 3, fontSize: 10 }}>
+                      <span>{label}</span>
+                      <strong>{progress === 100 ? '已完成' : progress === 0 ? '等待中' : `${progress}%`}</strong>
+                    </div>
+                    <div style={{ position: 'relative', height: 7, overflow: 'hidden', borderRadius: 999, background: 'rgba(39, 0, 7, 0.72)' }}>
+                      <div
+                        role="progressbar"
+                        aria-label={label}
+                        aria-valuenow={progress}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        style={{ width: '100%', height: '100%', borderRadius: 999, background: 'linear-gradient(90deg, #ffb900, #fff6a5)', transform: `scaleX(${progress / 100})`, transformOrigin: 'left center', transition: 'transform 220ms ease-out' }}
+                      />
+                      {progress > 0 && progress < 100 && (
+                        <span className="dsh-progress-shine" aria-hidden="true" style={{ position: 'absolute', inset: 0, width: '34%', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,.7), transparent)', animation: 'dsh-unlock-shine 900ms linear infinite' }} />
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+          {unlocked && (
+            <div role="status" style={{ marginTop: 10, padding: '10px 11px', border: '1px solid #fff1a6', borderRadius: 12, background: 'linear-gradient(135deg, rgba(255,224,83,.98), rgba(255,171,25,.98))', boxShadow: '0 6px 22px rgba(72,0,8,.36)', color: '#951500', textAlign: 'center' }}>
+              <strong style={{ display: 'block', marginBottom: 7, fontSize: 17 }}>您已解锁 V4 正式版</strong>
+              <button type="button" style={primaryButtonStyle} onClick={onUnlock}>
+                立即使用 DeepSeek V4 Pro
+              </button>
+            </div>
+          )}
         </div>
-        <h2 style={{ margin: '6px 0 0', fontSize: 28, lineHeight: 1.1, textShadow: '0 2px 0 #8c001d' }}>
-          这一次，你一定要提现
-        </h2>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, marginTop: 10 }}>
-          <strong style={{ color: '#fff2a8', fontSize: 31, lineHeight: 1 }}>¥99.99</strong>
-          <span style={{ fontSize: 12, fontWeight: 800 }}>还差 ¥0.01 即可到账</span>
+        <div className="dsh-wheel-panel" style={{ textAlign: 'center' }}>
+          <div className="dsh-prize-wheel-wrap" style={{ position: 'relative', width: 220, height: 220, margin: '0 auto' }}>
+            <div aria-hidden="true" style={{ position: 'absolute', zIndex: 4, top: -7, left: '50%', width: 0, height: 0, borderLeft: '12px solid transparent', borderRight: '12px solid transparent', borderTop: '25px solid #fff2a8', filter: 'drop-shadow(0 2px 1px #8e1600)', transform: 'translateX(-50%)' }} />
+            <div
+              className="dsh-prize-wheel"
+              data-dsh-prize-wheel
+              onTransitionEnd={(event) => {
+                if (event.target === event.currentTarget) settleSpin()
+              }}
+              style={{
+                position: 'absolute', inset: 0, border: '8px solid #ffd252', borderRadius: '50%',
+                background: 'conic-gradient(from -22.5deg, #ffe48a 0deg 45deg, #d92936 45deg 90deg, #ffe48a 90deg 135deg, #d92936 135deg 180deg, #ffe48a 180deg 225deg, #d92936 225deg 270deg, #ffe48a 270deg 315deg, #d92936 315deg 360deg)',
+                boxShadow: 'inset 0 0 0 3px #9d120f, 0 8px 22px rgba(67,0,8,.38)',
+                transform: `rotate(${rotation}deg)`,
+              }}
+            >
+              {WHEEL_SEGMENTS.map((label, index) => (
+                <span
+                  key={label}
+                  className="dsh-wheel-label"
+                  style={{
+                    position: 'absolute', top: 20, left: '50%', width: 58, marginLeft: -29,
+                    color: index % 2 === 0 ? '#8f1400' : '#fff4bd', fontSize: 10, fontWeight: 950,
+                    lineHeight: 1.08, textAlign: 'center', textShadow: index % 2 === 0 ? 'none' : '0 1px #8d0017',
+                    transform: `rotate(${index * 45}deg)`, transformOrigin: 'center 82px',
+                  }}
+                >
+                  {label}
+                </span>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="dsh-wheel-button"
+              data-dsh-spin-button
+              onClick={spin}
+              disabled={spinning || unlocked}
+              aria-label={unlocked ? '已抽中 V4 Pro 正式版' : `第 ${draws + 1} 次抽奖`}
+              style={{
+                position: 'absolute', zIndex: 3, top: '50%', left: '50%', width: 74, height: 74,
+                border: '5px solid #ffd252', borderRadius: '50%', background: 'linear-gradient(180deg, #fff9be, #ffbd2f)',
+                boxShadow: '0 4px 0 #b54a00, 0 7px 18px rgba(73,0,8,.36)', color: '#9b1700',
+                fontSize: 13, fontWeight: 950, lineHeight: 1.15, cursor: spinning || unlocked ? 'default' : 'pointer',
+                transform: 'translate(-50%, -50%)', transition: 'transform 100ms ease, opacity 100ms ease',
+                opacity: spinning || unlocked ? 0.76 : 1,
+              }}
+            >
+              {unlocked ? '已中奖' : spinning ? '抽取中' : <>立即<br />抽奖</>}
+            </button>
+          </div>
+          <div style={{ marginTop: 9, fontSize: 11, fontWeight: 900, color: '#fff0a1' }}>
+            今日剩余次数：∞
+          </div>
+          <div style={{ marginTop: 4, fontSize: 10, opacity: 0.76 }}>
+            {unlocked ? '本轮大奖已领完' : 'V4 Pro 正式版仍在奖池中'}
+          </div>
         </div>
-        <div style={{ height: 8, margin: '10px 0 7px', overflow: 'hidden', borderRadius: 999, background: 'rgba(70, 0, 10, 0.5)' }}>
-          <div style={{ width: '99.99%', height: '100%', borderRadius: 999, background: 'linear-gradient(90deg, #ffe067, #fff8bf)' }} />
-        </div>
-        <p style={{ margin: '0 0 13px', fontSize: 12, lineHeight: 1.45 }}>
-          看完广告才能继续显示 inference。放心，后面的文字和 tool call 只是藏起来了，没有暂停。
-        </p>
-        <div style={{ height: 3, marginBottom: 9, overflow: 'hidden', borderRadius: 99, background: 'rgba(255, 255, 255, 0.22)' }}>
-          <div style={{ width: `${progress}%`, height: '100%', transition: 'width 180ms linear', background: '#fff4a7' }} />
-        </div>
-        <button
-          type="button"
-          style={{ ...primaryButtonStyle, opacity: left > 0 ? 0.82 : 1 }}
-          disabled={left > 0}
-          onClick={onUnlock}
-          aria-live="polite"
-        >
-          {left > 0 ? `${left} 秒后领取 0.01 元` : '领取 0.01 元并继续推理'}
-        </button>
-        <button
-          type="button"
-          onClick={onUnlock}
-          style={{ display: 'block', margin: '10px auto 0', padding: 2, border: 0, background: 'transparent', color: 'rgba(255,255,255,0.78)', fontSize: 11, textDecoration: 'underline', cursor: 'pointer' }}
-        >
-          放弃提现，直接显示
-        </button>
-        <div style={{ marginTop: 6, textAlign: 'center', fontSize: 9, opacity: 0.56 }}>虚拟红包，仅供娱乐 · Esc 可直接跳过</div>
       </div>
+      <button
+        type="button"
+        onClick={onUnlock}
+        style={{ display: 'block', margin: '0 auto 5px', padding: 2, border: 0, background: 'transparent', color: 'rgba(255,255,255,0.78)', fontSize: 11, textDecoration: 'underline', cursor: 'pointer' }}
+      >
+        继续使用当前版本
+      </button>
+      <div style={{ marginBottom: 9, textAlign: 'center', fontSize: 9, opacity: 0.56 }}>演示内容纯属虚构，按 Esc 退出</div>
     </section>
   )
 }
@@ -227,7 +411,7 @@ function RewardCard({ creative, seconds, onUnlock }: RewardCardProps) {
 export function InferenceRewardGate({
   creative,
   delayMs = REWARD_GATE_DELAY_MS,
-  watchSeconds = REWARD_WATCH_SECONDS,
+  spinsToUnlock = REWARD_SPINS_TO_UNLOCK,
 }: InferenceRewardGateProps) {
   const [settings] = useAdSettings()
   const retired = useRetired()
@@ -281,7 +465,7 @@ export function InferenceRewardGate({
 
   if (target === undefined) return null
   return createPortal(
-    <RewardCard creative={creative} seconds={watchSeconds} onUnlock={unlock} />,
+    <RewardCard creative={creative} spinsToUnlock={spinsToUnlock} onUnlock={unlock} />,
     target.host,
   )
 }

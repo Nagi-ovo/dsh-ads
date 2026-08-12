@@ -6,7 +6,7 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
-  InferenceRewardGate, REWARD_GATE_DELAY_MS, REWARD_WATCH_SECONDS,
+  InferenceRewardGate, REWARD_GATE_DELAY_MS, REWARD_SPINS_TO_UNLOCK,
 } from '../src/client/InferenceRewardGate.tsx'
 import type { AdCreative } from '../src/client/types.ts'
 import { clearPersisted } from '../src/client/persist.ts'
@@ -37,11 +37,12 @@ async function flushObserver(): Promise<void> {
   await act(async () => { await Promise.resolve() })
 }
 
-/** Advance recursive one-second countdown timers with React commits between ticks. */
-function finishCountdown(): void {
-  for (let second = 0; second < REWARD_WATCH_SECONDS; second += 1) {
-    act(() => { vi.advanceTimersByTime(1_000) })
-  }
+/** Click the wheel once and finish its state transition. */
+function spinOnce(): void {
+  const button = document.querySelector<HTMLButtonElement>('[data-dsh-spin-button]')
+  act(() => { button?.click() })
+  const wheel = document.querySelector('[data-dsh-prize-wheel]')
+  act(() => { wheel?.dispatchEvent(new Event('transitionend', { bubbles: true })) })
 }
 
 beforeEach(() => {
@@ -74,7 +75,9 @@ describe('InferenceRewardGate', () => {
     act(() => { root.render(<InferenceRewardGate creative={CREATIVE} />) })
     act(() => { vi.advanceTimersByTime(REWARD_GATE_DELAY_MS) })
 
-    expect(document.body.textContent).toContain('这一次，你一定要提现')
+    expect(document.body.textContent).toContain('转到 V4 Pro 正式版才算你赢')
+    expect(document.body.textContent).not.toContain('tool call')
+    expect(document.body.textContent).not.toContain('模型仍在后台工作')
     expect(assistant.dataset.dshRewardLocked).toBe('true')
     expect(assistant.style.overflow).toBe('hidden')
     expect(tool.style.display).toBe('none')
@@ -91,7 +94,7 @@ describe('InferenceRewardGate', () => {
 
     act(() => {
       [...document.querySelectorAll('button')]
-        .find((button) => button.textContent?.includes('放弃提现'))?.click()
+        .find((button) => button.textContent?.includes('继续使用当前版本'))?.click()
     })
     expect(document.querySelector('[data-dsh-reward-gate]')).toBeNull()
     expect(assistant.dataset.dshRewardLocked).toBeUndefined()
@@ -100,7 +103,7 @@ describe('InferenceRewardGate', () => {
     expect(laterTool.style.display).toBe('')
   })
 
-  it('reveals the accumulated tail after the rewarded-ad countdown', () => {
+  it('advances only after manual spins and reveals the accumulated tail on the grand prize', () => {
     const assistant = row('assistant-step', 'assistant-1')
     const streaming = document.createElement('div')
     streaming.dataset.streaming = 'true'
@@ -110,13 +113,50 @@ describe('InferenceRewardGate', () => {
 
     act(() => { root.render(<InferenceRewardGate creative={CREATIVE} />) })
     act(() => { vi.advanceTimersByTime(REWARD_GATE_DELAY_MS) })
-    finishCountdown()
+    expect(document.querySelectorAll('[role="progressbar"]')).toHaveLength(4)
+    expect(document.querySelector('[aria-label="正式版资格匹配"]')?.getAttribute('aria-valuenow')).toBe('0')
+    act(() => { vi.advanceTimersByTime(60_000) })
+    expect(document.querySelector('[aria-label="正式版资格匹配"]')?.getAttribute('aria-valuenow')).toBe('0')
+    expect(document.body.textContent).not.toContain('您已解锁 V4 正式版')
+    spinOnce()
+    expect(document.querySelector('[aria-label="正式版资格匹配"]')?.getAttribute('aria-valuenow')).toBe('50')
+    expect(document.querySelector('[data-dsh-draw-result]')?.textContent).toContain('谢谢参与')
+    for (let draw = 1; draw < REWARD_SPINS_TO_UNLOCK - 1; draw += 1) spinOnce()
+    expect(document.body.textContent).not.toContain('您已解锁 V4 正式版')
+    spinOnce()
     const claim = [...document.querySelectorAll<HTMLButtonElement>('button')]
-      .find((button) => button.textContent?.includes('领取 0.01 元并继续推理'))
+      .find((button) => button.textContent?.includes('立即使用 DeepSeek V4 Pro'))
     expect(claim?.disabled).toBe(false)
+    expect(document.body.textContent).toContain('您已解锁 V4 正式版')
+    expect(document.querySelector('[data-dsh-draw-result]')?.textContent).toContain('抽中 V4 Pro 正式版')
     act(() => { claim?.click() })
     expect(tool.style.display).toBe('')
-    expect(document.body.textContent).not.toContain('还差 ¥0.01')
+    expect(document.body.textContent).not.toContain('您已解锁 V4 正式版')
+  })
+
+  it('requires a fresh click for every consolation prize', () => {
+    const assistant = row('assistant-step', 'assistant-1')
+    const streaming = document.createElement('div')
+    streaming.dataset.streaming = 'true'
+    assistant.append(streaming)
+    flow.append(assistant)
+
+    act(() => { root.render(<InferenceRewardGate creative={CREATIVE} delayMs={0} spinsToUnlock={3} />) })
+    act(() => { vi.advanceTimersByTime(0) })
+    const button = document.querySelector<HTMLButtonElement>('[data-dsh-spin-button]')
+    act(() => { button?.click() })
+    expect(button?.disabled).toBe(true)
+    expect(document.querySelector('[data-dsh-draw-result]')?.textContent).toContain('转盘飞转中')
+    act(() => {
+      document.querySelector('[data-dsh-prize-wheel]')
+        ?.dispatchEvent(new Event('transitionend', { bubbles: true }))
+    })
+    expect(button?.disabled).toBe(false)
+    expect(document.body.textContent).toContain('已抽 1 次')
+    act(() => { vi.advanceTimersByTime(60_000) })
+    expect(document.body.textContent).toContain('已抽 1 次')
+    expect(document.querySelector('[data-dsh-reward-gate]')).not.toBeNull()
+    expect(document.body.textContent).not.toContain('您已解锁 V4 正式版')
   })
 
   it('does not interrupt a response that finishes before the opening delay', () => {
@@ -140,11 +180,11 @@ describe('InferenceRewardGate', () => {
     assistant.append(streaming)
     flow.append(assistant)
 
-    act(() => { root.render(<InferenceRewardGate creative={CREATIVE} delayMs={0} watchSeconds={0} />) })
+    act(() => { root.render(<InferenceRewardGate creative={CREATIVE} delayMs={0} spinsToUnlock={0} />) })
     act(() => { vi.advanceTimersByTime(0) })
     act(() => {
       [...document.querySelectorAll('button')]
-        .find((button) => button.textContent?.includes('领取 0.01 元并继续推理'))?.click()
+        .find((button) => button.textContent?.includes('立即使用 DeepSeek V4 Pro'))?.click()
     })
     const next = row('assistant-step', 'assistant-2')
     const nextStreaming = document.createElement('div')
