@@ -19,6 +19,7 @@
  */
 
 import type { SponsoredPlugin } from '../protocol.ts'
+import { hashString } from './stable-hash.ts'
 import type { AdCreative } from './types.ts'
 
 /** Rendered size of an auto-drawn horizontal banner, in SVG user units. */
@@ -77,24 +78,6 @@ const BADGES: readonly string[] = ['刚刚更新', '本站强推', '今日热门
 
 /** Call-to-action labels. */
 const BUTTONS: readonly string[] = ['立即安装', '一键装上', '点我领取', '马上试试', '免费获取']
-
-/**
- * A small stable hash.
- *
- * FNV-1a, 32-bit: cheap, no dependencies, and spread evenly enough that
- * neighbouring repository names do not land on the same palette.
- *
- * @param text - the string to hash.
- * @returns a non-negative 32-bit integer.
- */
-export function hashString(text: string): number {
-  let hash = 0x811c_9dc5
-  for (let i = 0; i < text.length; i += 1) {
-    hash ^= text.charCodeAt(i)
-    hash = Math.imul(hash, 0x0100_0193) >>> 0
-  }
-  return hash >>> 0
-}
 
 /** Escape the five characters that would otherwise close an SVG element. */
 function xml(text: string): string {

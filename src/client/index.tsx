@@ -58,7 +58,7 @@ const DEFAULT_SCARE_DELAY_MS = 4_000
 
 /**
  * Resolve the reward creative and fail at module load when the asset build omitted it.
- * @returns the shipped cash-reward artwork.
+ * @returns the shipped God-of-Wealth whale artwork.
  */
 function rewardCreative(): AdCreative {
   const creative = BUILTIN_REWARDS[0]
@@ -66,7 +66,7 @@ function rewardCreative(): AdCreative {
   return creative
 }
 
-/** The one cash-reward creative shipped with the client. */
+/** The one model-component reward creative shipped with the client. */
 const REWARD_CREATIVE = rewardCreative()
 
 /**
@@ -99,7 +99,7 @@ function AdDockEntry({ sessionId }: PropsRuntime<'conversation.input.dock'>) {
         scareHref={SCARE_HREF}
         chime
       />
-      <InferenceRewardGate creative={REWARD_CREATIVE} />
+      <InferenceRewardGate creative={REWARD_CREATIVE} sessionId={sessionId} />
     </>
   )
 }

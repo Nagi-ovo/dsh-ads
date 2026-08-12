@@ -22,8 +22,9 @@
  */
 
 import type { SponsoredPlugin } from '../protocol.ts'
-import { hashString, pluginCreative } from './plugin-banner.ts'
+import { pluginCreative } from './plugin-banner.ts'
 import { readLedger, recordSeen, rotate, writeLedger } from './rotation.ts'
+import { hashString } from './stable-hash.ts'
 import type { AdCreative } from './types.ts'
 
 /** Every eligible plugin, as published by the registry fetch. */

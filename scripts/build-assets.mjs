@@ -46,7 +46,7 @@ const POPUP_META = {
 
 /** Inline rewarded-ad artwork: exact copy stays in HTML for legibility. */
 const REWARD_META = {
-  'reward-cash': { alt: '红色现金红包喷出金币，进度只差最后一点' },
+  'reward-whale': { alt: '戴财神帽的蓝黑虎鲸抱着权重碎片和模型组件' },
 }
 
 /**
@@ -101,7 +101,7 @@ export const BUILTIN_POPUPS: readonly AdCreative[] = ${JSON.stringify(popups, nu
 /** Browser-game posters for the bottom-left takeover, rotated in order. */
 export const BUILTIN_POSTERS: readonly AdCreative[] = ${JSON.stringify(posters, null, 2)} as const
 
-/** Cash-reward artwork shown while the transcript tail is held back. */
+/** God-of-Wealth whale artwork shown while the transcript tail is held back. */
 export const BUILTIN_REWARDS: readonly AdCreative[] = ${JSON.stringify(rewards, null, 2)} as const
 `
 await writeFile(outFile, body)

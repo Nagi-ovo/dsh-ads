@@ -19,7 +19,7 @@
  * @module
  */
 
-import { hashString } from './plugin-banner.ts'
+import { hashString } from './stable-hash.ts'
 
 /** Impressions per `<owner>/<repo>`, as counted by this browser. */
 export type SeenLedger = Readonly<Record<string, number>>
