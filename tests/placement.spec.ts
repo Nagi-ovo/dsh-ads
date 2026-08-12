@@ -32,6 +32,7 @@ const safe: SafeArea = {
 const wide: AdCreative = { id: 'w', width: 900, height: 120, shape: 'wide', weight: 1, alt: 'w', src: '' }
 const strip: AdCreative = { id: 's', width: 900, height: 46, shape: 'strip', weight: 1, alt: 's', src: '' }
 const tall: AdCreative = { id: 't', width: 160, height: 640, shape: 'tall', weight: 1, alt: 't', src: '' }
+const sponsorTall: AdCreative = { id: 'st', width: 300, height: 480, shape: 'tall', weight: 1, alt: 'st', src: '' }
 
 /**
  * Build a run of placed banners cycling through the given artwork.
@@ -80,8 +81,6 @@ describe('layout', () => {
   })
 
   it('never overlaps two banners in the same gutter', () => {
-    // Rectangles, not just vertical extents: paired skyscrapers deliberately
-    // share a row and are separated horizontally instead.
     const placed = layout(placeMany(20), viewport, safe)
     for (const side of ['left', 'right'] as const) {
       const column = placed.filter((p) => p.ad.side === side)
@@ -98,17 +97,12 @@ describe('layout', () => {
     }
   })
 
-  it('pairs two skyscrapers into one column-wide row', () => {
-    const skyline: AdCreative[] = [tall, tall, tall, tall]
-    const placed = layout(placeMany(4, skyline), viewport, safe)
-    const leftColumn = placed.filter((p) => p.ad.side === 'left')
-    expect(leftColumn).toHaveLength(2)
-    const [first, second] = leftColumn
-    expect(first!.box.top).toBe(second!.box.top)
-    // The pair spans exactly the width a horizontal banner would occupy.
+  it('gives a sponsor skyscraper the full gutter width instead of duplicating it', () => {
+    const skyscraper = layout(placeMany(1, [sponsorTall]), viewport, safe)[0]
     const horizontal = layout(placeMany(1, [wide]), viewport, safe)[0]
-    const spanned = second!.box.left + second!.box.width - first!.box.left
-    expect(Math.round(spanned)).toBe(Math.round(horizontal!.box.width))
+    expect(skyscraper).toBeDefined()
+    expect(horizontal).toBeDefined()
+    expect(Math.round(skyscraper!.box.width)).toBe(Math.round(horizontal!.box.width))
   })
 
   it('drops the gutters entirely rather than rendering unreadable slivers', () => {
@@ -137,7 +131,7 @@ describe('layout', () => {
     expect(many.length).toBeGreaterThan(0)
   })
 
-  it('renders skyscrapers narrower than horizontal banners so they fit at all', () => {
+  it('shrinks an unusually narrow skyscraper only as much as needed to fit vertically', () => {
     const placed = layout(placeMany(6), viewport, safe)
     const skyscraper = placed.find((p) => p.ad.creative.shape === 'tall')
     const banner = placed.find((p) => p.ad.creative.shape === 'wide')

@@ -17,7 +17,7 @@ import { useState, type CSSProperties, type ReactNode } from 'react'
 import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: pulls the `conversation.chat.turnTail` SlotMap declaration.
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
-import type { AdCreative } from './types.ts'
+import type { AdCreative, AdLocale } from './types.ts'
 import { feedAd } from './feed.ts'
 import { resolveHitbox, VISUAL_CLOSE_PX } from './hitbox.ts'
 import { useAdSettings } from './settings.ts'
@@ -42,6 +42,8 @@ export interface InlineAdInjected {
    * across on every render.
    */
   readonly pool: readonly AdCreative[]
+  /** Active DSH language, used for chrome and dynamic plugin creatives. */
+  readonly locale: AdLocale
 }
 
 /** Full props: the turn-tail owner currency plus the injected pool. */
@@ -85,7 +87,7 @@ const labelStyle: CSSProperties = {
  * @param props - see {@link InlineAdProps}.
  * @returns the inline banner, or null once dismissed.
  */
-export function InlineAd({ seq, sessionId, pool }: InlineAdProps) {
+export function InlineAd({ seq, sessionId, pool, locale }: InlineAdProps) {
   const [closed, setClosed] = useState(false)
   // The switch lives on the floating layer and on the host's settings page,
   // both in different React trees; the persistence layer's same-document
@@ -93,13 +95,13 @@ export function InlineAd({ seq, sessionId, pool }: InlineAdProps) {
   const [settings] = useAdSettings()
   // Keyed by session as well as seq: sequence numbers restart per conversation,
   // and without the session two different turns would share one assignment.
-  const creative = feedAd(`${sessionId}:${seq}`, pool)
+  const creative = feedAd(`${sessionId}:${seq}`, pool, locale)
   if (!settings.feed || closed || creative === undefined) return null
   // Seed from seq so the hitbox is stable per turn without any stored state.
   const hit = resolveHitbox((seq * 0.618_033) % 1)
   return (
     <div style={{ margin: '8px 0 4px', maxWidth: 420 }}>
-      <div style={labelStyle}>广告</div>
+      <div style={labelStyle}>{locale === 'en' ? 'ADVERTISEMENT' : '广告'}</div>
       <div style={{ position: 'relative' }}>
         {/* Banners for real community plugins link to their repository; the
             built-ins advertise things that do not exist and stay inert. The
@@ -135,7 +137,7 @@ export function InlineAd({ seq, sessionId, pool }: InlineAdProps) {
         </div>
         <button
           type="button"
-          aria-label="关闭广告"
+          aria-label={locale === 'en' ? 'Close advertisement' : '关闭广告'}
           onClick={() => setClosed(true)}
           style={{
             position: 'absolute',

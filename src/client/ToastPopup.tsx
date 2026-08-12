@@ -13,7 +13,7 @@
  */
 
 import { useEffect, useState, type CSSProperties } from 'react'
-import type { AdCreative } from './types.ts'
+import type { AdCreative, AdLocale } from './types.ts'
 import { resolveHitbox } from './hitbox.ts'
 import { playChime } from './sound.ts'
 
@@ -31,6 +31,8 @@ const POPUP_CLOSE_PX = 16
 
 /** Props for one corner pop-up. */
 export interface ToastPopupProps {
+  /** Language used by the host UI. */
+  readonly locale?: AdLocale
   /** The artwork to show. */
   readonly creative: AdCreative
   /** Frozen randomness driving the decoy hitbox, in [0, 1). */
@@ -61,7 +63,7 @@ const chromeStyle: CSSProperties = {
  * @param props - see {@link ToastPopupProps}.
  * @returns the fixed-position pop-up window.
  */
-export function ToastPopup({ creative, seed, chime, onClose, onMisfire }: ToastPopupProps) {
+export function ToastPopup({ creative, seed, chime, onClose, onMisfire, locale = 'zh' }: ToastPopupProps) {
   const [entered, setEntered] = useState(false)
   const hit = resolveHitbox(seed, POPUP_HITBOX_PX)
   // No retract timer: a pop-up that leaves on its own is a notification, not
@@ -92,7 +94,7 @@ export function ToastPopup({ creative, seed, chime, onClose, onMisfire }: ToastP
       onClick={onMisfire}
     >
       <div style={chromeStyle}>
-        <span>DSH 消息中心</span>
+        <span>{locale === 'en' ? 'DSH MESSAGE CENTER' : 'DSH 消息中心'}</span>
         <span style={{ position: 'relative', width: POPUP_CLOSE_PX, height: POPUP_CLOSE_PX }}>
           <span
             aria-hidden="true"
@@ -110,7 +112,7 @@ export function ToastPopup({ creative, seed, chime, onClose, onMisfire }: ToastP
           </span>
           <button
             type="button"
-            aria-label="关闭弹窗广告"
+            aria-label={locale === 'en' ? 'Close pop-up advertisement' : '关闭弹窗广告'}
             onClick={(event) => {
               event.stopPropagation()
               onClose()

@@ -17,6 +17,7 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { resolveHitbox } from './hitbox.ts'
 import { playChime } from './sound.ts'
 import { nationalRank, scorePercentile, tierName, type SpeedReading } from './speed-score.ts'
+import type { AdLocale } from './types.ts'
 
 /** Rendered width of the result window, in CSS pixels. */
 const TOAST_WIDTH = 340
@@ -35,6 +36,8 @@ const COUNT_STEPS = 30
 
 /** Props for the benchmark window. */
 export interface SpeedToastProps {
+  /** Language used by the host UI. */
+  readonly locale?: AdLocale
   /** What the browser measured. */
   readonly reading: SpeedReading
   /** Frozen randomness driving the decoy hitbox, in [0, 1). */
@@ -101,7 +104,7 @@ const boostButtonStyle: CSSProperties = {
  * @param props - see {@link SpeedToastProps}.
  * @returns the fixed-position result window.
  */
-export function SpeedToast({ reading, seed, chime, href, onClose }: SpeedToastProps) {
+export function SpeedToast({ reading, seed, chime, href, onClose, locale = 'zh' }: SpeedToastProps) {
   const [entered, setEntered] = useState(false)
   const percentile = scorePercentile(reading.loadMs)
   // Runs the percentile up from zero on arrival. Every one of these utilities
@@ -146,7 +149,7 @@ export function SpeedToast({ reading, seed, chime, href, onClose }: SpeedToastPr
       }}
     >
       <div style={chromeStyle}>
-        <span>🚀 DSH 跑分中心</span>
+        <span>{locale === 'en' ? '🚀 DSH SPEED BOOSTER' : '🚀 DSH 跑分中心'}</span>
         <span style={{ position: 'relative', width: TOAST_CLOSE_PX, height: TOAST_CLOSE_PX, flex: '0 0 auto' }}>
           <span
             aria-hidden="true"
@@ -164,7 +167,7 @@ export function SpeedToast({ reading, seed, chime, href, onClose }: SpeedToastPr
           </span>
           <button
             type="button"
-            aria-label="关闭跑分结果"
+            aria-label={locale === 'en' ? 'Close benchmark result' : '关闭跑分结果'}
             onClick={onClose}
             style={{
               position: 'absolute',
@@ -181,24 +184,35 @@ export function SpeedToast({ reading, seed, chime, href, onClose }: SpeedToastPr
         </span>
       </div>
       <div style={bodyStyle}>
-        <div style={{ color: '#666' }}>本次 DSH 启动耗时</div>
+        <div style={{ color: '#666' }}>{locale === 'en' ? 'YOUR DSH STARTUP TIME' : '本次 DSH 启动耗时'}</div>
         <div style={{ fontSize: 30, fontWeight: 900, color: '#128a4e', lineHeight: 1.2 }}>
-          {seconds} <span style={{ fontSize: 15 }}>秒</span>
+          {seconds} <span style={{ fontSize: 15 }}>{locale === 'en' ? 'SEC' : '秒'}</span>
         </div>
         <div style={{ margin: '6px 0 10px', fontSize: 14 }}>
-          已超过全国 <strong style={{ fontSize: 20, color: '#e8a020' }}>{shown.toFixed(1)}%</strong> 的用户
+          {locale === 'en' ? 'FASTER THAN ' : '已超过全国 '}
+          <strong style={{ fontSize: 20, color: '#e8a020' }}>{shown.toFixed(1)}%</strong>
+          {locale === 'en' ? ' OF ALL USERS*' : ' 的用户'}
         </div>
         <div style={{ padding: '8px 10px', background: '#fff', border: '1px solid #dfe4df' }}>
-          <div style={rowStyle}><span>战斗力评级</span><strong style={{ color: '#128a4e' }}>{tierName(percentile)}</strong></div>
-          <div style={rowStyle}><span>全国排名</span><strong>第 {nationalRank(percentile).toLocaleString('en-US')} 名</strong></div>
           <div style={rowStyle}>
-            <span>首屏渲染</span>
-            <strong>{reading.paintMs === undefined ? '—' : `${reading.paintMs} 毫秒`}</strong>
+            <span>{locale === 'en' ? 'GAMER RATING' : '战斗力评级'}</span>
+            <strong style={{ color: '#128a4e' }}>{tierName(percentile, locale)}</strong>
           </div>
-          <div style={rowStyle}><span>检测到核心数</span><strong>{reading.cores} 核</strong></div>
+          <div style={rowStyle}>
+            <span>{locale === 'en' ? 'NATIONAL RANK' : '全国排名'}</span>
+            <strong>{locale === 'en' ? '#' : '第 '}{nationalRank(percentile).toLocaleString('en-US')}{locale === 'en' ? '' : ' 名'}</strong>
+          </div>
+          <div style={rowStyle}>
+            <span>{locale === 'en' ? 'FIRST PAINT' : '首屏渲染'}</span>
+            <strong>{reading.paintMs === undefined ? '—' : `${reading.paintMs} ${locale === 'en' ? 'MS' : '毫秒'}`}</strong>
+          </div>
+          <div style={rowStyle}>
+            <span>{locale === 'en' ? 'CORES DETECTED' : '检测到核心数'}</span>
+            <strong>{reading.cores}{locale === 'en' ? '' : ' 核'}</strong>
+          </div>
         </div>
         <div style={{ margin: '8px 0 10px', color: '#888', fontSize: 11 }}>
-          排名数据由本插件当场编造，仅供娱乐
+          {locale === 'en' ? '*Ranking generated moments ago by this plugin' : '排名数据由本插件当场编造，仅供娱乐'}
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <a
@@ -208,9 +222,11 @@ export function SpeedToast({ reading, seed, chime, href, onClose }: SpeedToastPr
             style={boostButtonStyle}
             onClick={onClose}
           >
-            一键提速（去点 Star）
+            {locale === 'en' ? 'BOOST NOW (STAR REPO)' : '一键提速（去点 Star）'}
           </a>
-          <button type="button" style={buttonStyle} onClick={onClose}>我很满意</button>
+          <button type="button" style={buttonStyle} onClick={onClose}>
+            {locale === 'en' ? 'I FEEL FASTER' : '我很满意'}
+          </button>
         </div>
       </div>
     </div>

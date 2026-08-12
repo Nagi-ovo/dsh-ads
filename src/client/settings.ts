@@ -15,6 +15,7 @@
  */
 
 import { usePersisted } from './persist.ts'
+import type { AdLocale } from './types.ts'
 
 /** Every switchable placement. */
 export interface AdSettings {
@@ -60,19 +61,19 @@ export interface PlacementRow {
    * chrome is already a 2005 advertisement and they are in keeping.
    */
   readonly icon: string
-  /** Menu label. */
-  readonly label: string
+  /** Menu label in each shipped locale. */
+  readonly label: Readonly<Record<AdLocale, string>>
 }
 
 /** The menu, in the order the placements appear on screen. */
 export const PLACEMENTS: readonly PlacementRow[] = [
-  { key: 'gutter', icon: '🧱', label: '两侧广告栏' },
-  { key: 'feed', icon: '📰', label: '对话里的推荐' },
-  { key: 'reward', icon: '🪙', label: '推理激励广告' },
-  { key: 'popup', icon: '🔔', label: '右下角弹窗' },
-  { key: 'speed', icon: '🚀', label: '跑分中心' },
-  { key: 'scare', icon: '☣️', label: '安全中心' },
-  { key: 'poster', icon: '🐋', label: '贪玩蓝鲸' },
+  { key: 'gutter', icon: '🧱', label: { zh: '两侧广告栏', en: 'Side banners' } },
+  { key: 'feed', icon: '📰', label: { zh: '对话里的推荐', en: 'Chat recommendations' } },
+  { key: 'reward', icon: '🪙', label: { zh: '推理激励广告', en: 'Inference reward ad' } },
+  { key: 'popup', icon: '🔔', label: { zh: '右下角弹窗', en: 'Corner pop-ups' } },
+  { key: 'speed', icon: '🚀', label: { zh: '跑分中心', en: 'Benchmark center' } },
+  { key: 'scare', icon: '☣️', label: { zh: '安全中心', en: 'Security center' } },
+  { key: 'poster', icon: '🐋', label: { zh: '贪玩蓝鲸', en: 'Fake whale game' } },
 ]
 
 /** Storage key holding {@link AdSettings}. */

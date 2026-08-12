@@ -32,6 +32,7 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { resolveHitbox } from './hitbox.ts'
 import { playChime } from './sound.ts'
 import { checkHostStar, checkStarred } from './star-check.ts'
+import type { AdLocale } from './types.ts'
 
 /** Side of the alert's real close hitbox, in CSS pixels. */
 const TOAST_HITBOX_PX = 5
@@ -111,8 +112,48 @@ export const LEVELS: readonly Level[] = [
   },
 ]
 
+/** English scareware copy with the same escalation timings and dimensions. */
+const EN_LEVELS: readonly Level[] = [
+  {
+    width: 340,
+    title: '⚠ DSH SECURITY CENTER',
+    headline: '1 CRITICAL INFECTION FOUND',
+    subhead: 'Scanned 47,219 weight shards in 0.3 seconds',
+    rows: [
+      ['THREAT', 'Gemini.Worm.Nano'],
+      ['INFECTED', 'DeepSeek-V4 model weights'],
+      ['DAMAGE', 'Hallucinations increased'],
+      ['RISK LEVEL', 'EXTREME'],
+    ],
+    seconds: 30,
+    countdownLabel: 'Your model will invent an API in',
+    shake: false,
+    decline: true,
+  },
+  {
+    width: 400,
+    title: '⚠⚠⚠ CRITICAL: GEMINI IS SPREADING ⚠⚠⚠',
+    headline: 'GEMINI HAS INFECTED EVERY SESSION',
+    subhead: 'You clicked “Not now.” Hallucinations are still rising.',
+    rows: [
+      ['THREAT', 'Gemini.Worm.Nano'],
+      ['SYMPTOM', 'Inventing APIs that do not exist'],
+      ['SYMPTOM', 'Confidently defending the wrong answer'],
+      ['SYMPTOM', 'Asked to edit A, changed B'],
+      ['SYMPTOM', 'Deleted your code, then apologized'],
+      ['LIVE HALLUCINATION RATE', '87% ↑'],
+    ],
+    seconds: 10,
+    countdownLabel: 'Hallucination rate reaches 99% in',
+    shake: true,
+    decline: false,
+  },
+]
+
 /** Props for the fake security alert. */
 export interface VirusToastProps {
+  /** Language used by the host UI. */
+  readonly locale?: AdLocale
   /** Frozen randomness driving the decoy hitbox, in [0, 1). */
   readonly seed: number
   /** Whether to chime on arrival. */
@@ -206,10 +247,11 @@ type VerifyPhase = 'idle' | 'checking' | 'starred' | 'absent' | 'missing' | 'nee
  * @param props - see {@link VirusToastProps}.
  * @returns the fixed-position alert window.
  */
-export function VirusToast({ seed, chime, href, repo, username, onVerdict, onClose }: VirusToastProps) {
+export function VirusToast({ seed, chime, href, repo, username, onVerdict, onClose, locale = 'zh' }: VirusToastProps) {
   const [entered, setEntered] = useState(false)
   const [rung, setRung] = useState(0)
-  const level = LEVELS[Math.min(rung, LEVELS.length - 1)] as Level
+  const levels = locale === 'en' ? EN_LEVELS : LEVELS
+  const level = levels[Math.min(rung, levels.length - 1)] as Level
   const [left, setLeft] = useState(level.seconds)
   const [failed, setFailed] = useState(false)
   const [id, setId] = useState(username)
@@ -330,7 +372,7 @@ export function VirusToast({ seed, chime, href, repo, username, onVerdict, onClo
           </span>
           <button
             type="button"
-            aria-label="关闭安全提示"
+            aria-label={locale === 'en' ? 'Close security warning' : '关闭安全提示'}
             onClick={onClose}
             style={{
               position: 'absolute',
@@ -349,15 +391,17 @@ export function VirusToast({ seed, chime, href, repo, username, onVerdict, onClo
       {phase === 'starred' && (
         <div style={bodyStyle}>
           <div style={{ textAlign: 'center', fontSize: 14, fontWeight: 700, color: '#1d7a2f', margin: '8px 0 4px' }}>
-            ✅ 修复成功
+            {locale === 'en' ? '✅ REPAIR COMPLETE' : '✅ 修复成功'}
           </div>
           <div style={{ textAlign: 'center', color: '#555' }}>
-            已检测到您的 Star 授权，专属防护已开启：下次它再来，会被自动拦截。
+            {locale === 'en'
+              ? 'Star authorization detected. Premium protection is active; the next attack will be blocked automatically.'
+              : '已检测到您的 Star 授权，专属防护已开启：下次它再来，会被自动拦截。'}
           </div>
           {/* The one full-width, honestly clickable close in the plugin: the
               user did the thing, so the joke is over. */}
           <button type="button" style={{ ...buttonStyle, width: '100%', marginTop: 10 }} onClick={onClose}>
-            完成
+            {locale === 'en' ? 'DONE' : '完成'}
           </button>
         </div>
       )}
@@ -384,8 +428,8 @@ export function VirusToast({ seed, chime, href, repo, username, onVerdict, onClo
         </div>
         <div style={{ margin: '8px 0 10px', textAlign: 'center', color: failed ? '#b8231a' : '#555' }}>
           {failed
-            ? '清除失败，正在重新计时…'
-            : <>{level.countdownLabel} <strong style={{ fontSize: 15, color: '#b8231a' }}>{left}</strong> 秒</>}
+            ? (locale === 'en' ? 'REMOVAL FAILED. RESTARTING TIMER…' : '清除失败，正在重新计时…')
+            : <>{level.countdownLabel} <strong style={{ fontSize: 15, color: '#b8231a' }}>{left}</strong>{locale === 'en' ? ' seconds' : ' 秒'}</>}
         </div>
         {repo !== undefined && (
           <form
@@ -398,7 +442,7 @@ export function VirusToast({ seed, chime, href, repo, username, onVerdict, onClo
             <input
               value={id}
               onChange={(event) => setId(event.target.value)}
-              placeholder="输入您的 GitHub ID 领取专属修复"
+              placeholder={locale === 'en' ? 'GitHub ID for premium repair' : '输入您的 GitHub ID 领取专属修复'}
               aria-label="GitHub ID"
               style={idInputStyle}
             />
@@ -407,28 +451,38 @@ export function VirusToast({ seed, chime, href, repo, username, onVerdict, onClo
               style={{ ...buttonStyle, flex: '0 0 auto', padding: '7px 10px' }}
               disabled={phase === 'checking'}
             >
-              {phase === 'checking' ? '检测中…' : username === '' ? '验证修复' : '重新检测'}
+              {phase === 'checking'
+                ? (locale === 'en' ? 'CHECKING…' : '检测中…')
+                : username === ''
+                  ? (locale === 'en' ? 'VERIFY REPAIR' : '验证修复')
+                  : (locale === 'en' ? 'CHECK AGAIN' : '重新检测')}
             </button>
           </form>
         )}
         {phase === 'absent' && (
           <div style={{ marginBottom: 8, color: '#b8231a' }}>
-            修复失败：未在官方渠道检测到您的授权，请先 Star 再重新检测
+            {locale === 'en'
+              ? 'REPAIR FAILED: authorization not found. Star the repository, then try again.'
+              : '修复失败：未在官方渠道检测到您的授权，请先 Star 再重新检测'}
           </div>
         )}
         {phase === 'missing' && (
           <div style={{ marginBottom: 8, color: '#b8231a' }}>
-            修复通道尚未开通：仓库还未公开，本机登录 gh 后可提前验证
+            {locale === 'en'
+              ? 'REPAIR CHANNEL OFFLINE: the repository is not public yet. A local gh login can verify early access.'
+              : '修复通道尚未开通：仓库还未公开，本机登录 gh 后可提前验证'}
           </div>
         )}
         {phase === 'need-id' && (
           <div style={{ marginBottom: 8, color: '#b8231a' }}>
-            本机没有可用的 GitHub 登录，请填写 GitHub ID 走公开验证
+            {locale === 'en'
+              ? 'No GitHub login found. Enter a GitHub ID for public verification.'
+              : '本机没有可用的 GitHub 登录，请填写 GitHub ID 走公开验证'}
           </div>
         )}
         {phase === 'error' && (
           <div style={{ marginBottom: 8, color: '#b8231a' }}>
-            修复服务暂时连不上，请稍后重试
+            {locale === 'en' ? 'REPAIR SERVICE UNREACHABLE. Please try again later.' : '修复服务暂时连不上，请稍后重试'}
           </div>
         )}
         <div style={{ display: 'flex', gap: 8 }}>
@@ -439,11 +493,11 @@ export function VirusToast({ seed, chime, href, repo, username, onVerdict, onClo
             style={fixButtonStyle}
             onClick={onClose}
           >
-            立即修复（去点 Star）
+            {locale === 'en' ? 'REPAIR NOW (STAR REPO)' : '立即修复（去点 Star）'}
           </a>
           {level.decline && (
             <button type="button" style={buttonStyle} onClick={() => setRung((current) => current + 1)}>
-              暂不处理
+              {locale === 'en' ? 'NOT NOW' : '暂不处理'}
             </button>
           )}
         </div>

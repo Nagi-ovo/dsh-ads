@@ -12,9 +12,12 @@
 
 import { useState, type CSSProperties } from 'react'
 import { PLACEMENTS, isSolo, toggleSolo, type AdSettings } from './settings.ts'
+import type { AdLocale } from './types.ts'
 
 /** Props shared by the menu and the bar. */
 export interface AdControlsProps {
+  /** Language used by the host UI. */
+  readonly locale?: AdLocale
   /** Current settings. */
   readonly settings: AdSettings
   /** Replace the settings. */
@@ -81,25 +84,34 @@ interface Item {
  * chosen, so a host popover can close itself.
  * @returns the panel.
  */
-export function AdSettingsMenu({ settings, onChange, onNuke, onPick }: AdControlsProps & { readonly onPick?: () => void }) {
+export function AdSettingsMenu({ locale = 'zh', settings, onChange, onNuke, onPick }: AdControlsProps & { readonly onPick?: () => void }) {
   const [hovered, setHovered] = useState('')
   const switches: readonly Item[] = PLACEMENTS.map((row) => ({
     icon: settings[row.key] ? '☑' : '☐',
-    label: `${row.icon} ${row.label}`,
+    label: `${row.icon} ${row.label[locale]}`,
     onClick: () => onChange({ ...settings, [row.key]: !settings[row.key] }),
   }))
   const extras: readonly Item[] = [
     {
       icon: settings.muted ? '🔇' : '🔊',
-      label: settings.muted ? '取消静音' : '静音广告',
+      label: settings.muted
+        ? (locale === 'en' ? 'Unmute ads' : '取消静音')
+        : (locale === 'en' ? 'Mute ads' : '静音广告'),
       onClick: () => onChange({ ...settings, muted: !settings.muted }),
     },
     {
       icon: '🐋',
-      label: isSolo(settings) ? '恢复全部广告' : '只留蓝鲸',
+      label: isSolo(settings)
+        ? (locale === 'en' ? 'Restore every ad' : '恢复全部广告')
+        : (locale === 'en' ? 'Whale only' : '只留蓝鲸'),
       onClick: () => onChange(toggleSolo(settings)),
     },
-    { icon: '🚫', label: '关闭所有广告', onClick: onNuke, danger: true },
+    {
+      icon: '🚫',
+      label: locale === 'en' ? 'Close all ads' : '关闭所有广告',
+      onClick: onNuke,
+      danger: true,
+    },
   ]
   const render = (item: Item, first: boolean) => (
     <button
@@ -126,9 +138,11 @@ export function AdSettingsMenu({ settings, onChange, onNuke, onPick }: AdControl
     <div style={panelStyle}>
       {/* The placement switches persist; everything under them does not, so
           they are visually separated rather than mixed into one list. */}
-      <div style={headingStyle}>显示哪些广告（会记住）</div>
+      <div style={headingStyle}>{locale === 'en' ? 'ADS TO SHOW (SAVED)' : '显示哪些广告（会记住）'}</div>
       {switches.map((item) => render(item, false))}
-      <div style={{ ...headingStyle, borderTop: '1px solid rgba(201, 162, 39, 0.4)', marginTop: 2 }}>本次会话</div>
+      <div style={{ ...headingStyle, borderTop: '1px solid rgba(201, 162, 39, 0.4)', marginTop: 2 }}>
+        {locale === 'en' ? 'THIS SESSION' : '本次会话'}
+      </div>
       {extras.map((item) => render(item, false))}
     </div>
   )

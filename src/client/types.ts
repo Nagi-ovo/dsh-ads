@@ -3,6 +3,9 @@
  * the per-banner randomness that makes its close button hard to hit.
  */
 
+/** The two locale ids shipped by DSH and by this plugin's artwork. */
+export type AdLocale = 'zh' | 'en'
+
 /**
  * Placement family of a banner image.
  * - `wide`  — a normal horizontal banner (roughly 5:1 … 10:1).

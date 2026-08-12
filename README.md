@@ -1,57 +1,43 @@
 # dsh-ads
 
-给 DSH Web UI 糊上一层 2005 年的中文站点广告：正文两侧的广告栏、对话里的信息流、流式推理中途的激励广告、右下角"叮"一声弹出的消息窗、左下角的《贪玩蓝鲸》。
+<p align="center">
+  <strong>简体中文</strong> | <a href="README.en.md">English</a>
+</p>
 
-每个 ✕ 都是画出来 16–20px，真正能点中的只有里面偏了位的 4–7px。点歪了整屏放大给你看——左下角那张会直接开始播视频。
+<p align="center">
+  <strong>把 DeepSeek Harness 变成 2005 年门户网站。连 inference 都逃不过广告。</strong><br>
+  侧栏、对话、推理中途、右下角弹窗，一个都不放过。
+</p>
 
-![正文两侧的广告栏、对话内的信息流广告、左下角《贪玩蓝鲸》海报、右下角「DSH 消息中心」弹窗](assets/screenshot.webp)
+![English 模式下的 Imagegen 虎鲸插件广告、假杀毒广告、假游戏和消息中心](assets/english-mode.png)
 
-输入框、会话列表、顶部标签栏都不挡，官方弹窗一打开整层自动让位。「关闭所有广告」是这里唯一说真话的按钮，点一次到刷新为止。
+## 能有多离谱
 
-除了侧栏，还有：进页面就弹的**跑分中心**（启动耗时是真测的，全国排名是编的）、跟着弹的**假杀毒告警**（点「暂不处理」它会变本加厉；给本仓库点过 Star 就能「验证修复」，从此改弹替你拦截的防护通报）、右下角图片弹窗，和左下角《贪玩蓝鲸》。
+- **能塞广告的地方都塞了。** 两侧广告栏、对话信息流、跑分中心、假杀毒弹窗和假游戏全套供应，同时给输入框和官方弹窗让路。
+- **推理到一半也得看广告。** 看起来像暂停，实际上模型没停，后面的回答会等广告结束再一起出现。
+- **这次一定能抽到 V4 Pro。** 戴财神帽的虎鲸掌管转盘，奖品包括 Attention Head、KV Cache、MoE 专家，以及永恒的「谢谢参与」。
+- **广告是假的，插件是真的。** `dsh-external` 社区插件会随机进入广告位，点击直接打开真实仓库。
 
-转盘不会每轮都弹：前两轮对话不出现，之后每轮有 20% 的稳定随机概率，两次至少隔两轮，连续没中也会在第 8 轮保底。命中后，当前 inference 需要连续跑过 1.8 秒才会插入**「转到 V4 Pro 正式版才算你赢」**。插件推荐和其他广告仍按原有规则注入。
+## 两套互联网垃圾美学
 
-每轮对话只发 1 张抽奖券，转盘会认真转 2.6 秒。奖池由戴财神帽的蓝黑虎鲸掌管，奖品是权重碎片、Attention Head、KV Cache、Transformer 层、MoE 专家和 1B 参数。抽中组件会累积 V4 Pro 解锁进度，抽中「谢谢参与」则一点不涨；进度跨对话保留，凑满后才会转中**「V4 Pro 正式版」**。按 Esc 或点「继续对话」可以随时退出。
+切换 DSH 的「设置 → 语言」，整套素材和 UI 文案会即时更换。中文模式负责财神鲸和 V4 Pro，English 模式负责 fake antivirus、one weird trick 和永远选错门的假游戏。
 
-![流式回答中插入的 V4 Pro 正式版抽奖广告：财神鲸模型奖池、每轮一抽的转盘与四道解锁进度条](assets/reward-gate.png)
-
-## 设置
-
-设置 → **广告（非官方）**，七个广告位一位一个开关，关掉的下次启动还是关的。只想留跑分和蓝鲸，勾一次就行。
-
-![DSH 设置面板里的「广告（非官方）」一页：两侧广告栏、对话里的推荐、推理激励广告、右下角弹窗、跑分中心、安全中心、贪玩蓝鲸，各自一个开关](assets/settings.webp)
-
-## 本站广告位火爆招商
-
-不用联系，你的插件已经在轮播了。`dsh-external` 里**最近两周更新过的**都在池子里，名字和一句话简介被自动排版成一张 2005 年味儿的横幅。这些是全场唯一能点进去的广告，点开跳你的仓库。
-
-对话里的信息流是主战场：隔一条一个真插件，挑的规则是**没露过的排前面**，所以池子里一百多个插件都会轮到，露完一遍才有人露第二遍。侧栏不中途换图（那会让下面的广告全往上跳），每开一个新对话换一批。
-
-不看 star，也不看谁 push 得勤。曝光账本只记在你自己浏览器里，不上报，没法刷。
-
-### 想自己定制这张广告：发个 PR
-
-自动生成的横幅只有名字 + 一句话简介。想换成自己的文案，在 `contrib/` 下加一个 `<插件名>.json`：
-
-```json
-{
-  "repo": "dsh-external/dsh-visualize",
-  "headline": "模型直接给你画界面",
-  "sub": "对话里长出可交互卡片，不是贴一段代码",
-  "badge": "本站强推",
-  "button": "立即安装",
-  "palette": 2
-}
-```
-
-除 `repo` 外全部可省。想自己出图（webp / png / gif 都行，动图会动）就再放一张同名图片，json 里加 `"image": "<文件名>"`。跑一次 `pnpm run assets` 把生成文件一起提交，PR 过来即可。
-
-图里不要出现真实人物和真实品牌，域名请打码 —— 只审这一条，文案多离谱都行。细则见 [contrib/README.md](contrib/README.md)。
+<table>
+  <tr>
+    <th>中文模式：财神鲸抽 V4 Pro</th>
+    <th>English mode: actual gameplay*</th>
+  </tr>
+  <tr>
+    <td><img src="assets/reward-gate.png" alt="中文模式下的 V4 Pro 财神鲸转盘"></td>
+    <td><img src="assets/en/posters/poster-fail-game.webp" alt="English mode fake gameplay ad"></td>
+  </tr>
+</table>
 
 ## 安装
 
-构建产物随仓库分发（`lib/` 已提交），无 install、无 build、无运行时依赖：
+装了社区 [plugin-registry](https://github.com/dsh-external/plugin-registry) 的用户，可以直接在「设置 → 插件」里安装 `dsh-ads`。
+
+也可以链接本地仓库。构建产物已提交，无需额外安装依赖：
 
 ```sh
 git clone https://github.com/dsh-external/dsh-ads.git
@@ -60,24 +46,19 @@ pnpm dsh plugin --profile web add link:/path/to/dsh-ads
 # 重启 dsh web，刷新页面
 ```
 
-配置行由 bundle patch 自动插入，无需手动编辑 cordis.patch.yml。
+所有广告位都能在「设置 → 广告（非官方）」里单独关闭。选择会保留到下次启动。
 
-装了社区 [plugin-registry](https://github.com/dsh-external/plugin-registry) 的用户也可以在设置页「插件」面板安装；最新 DSH 已移除旧的 `dsh registry` 命令。
+## 免费广告位，真的
 
-换素材：图放进 `assets/ads`（侧栏）、`assets/popups`（右下角）、`assets/posters`（左下角）或 `assets/rewards`（推理激励广告），在 `scripts/build-assets.mjs` 里补一行文案，跑 `pnpm run assets` 重新内联。webp 动图直接能用。在 `assets/posters` 里放一个同名 `.mp4`，点开广告时就播它。改源码后跑 `pnpm run check`。
+`dsh-external` 里最近两周更新过的插件会自动进入轮播。对话信息流优先展示没出现过的插件，曝光记录只留在本机浏览器里。
 
-## 顺便打个广告（这次是真的）
+想换成自己的文案或图片？看 [投稿说明](contrib/README.md)，发个 PR 就行。
 
-同一个作者的 [dsh-visualize](https://github.com/dsh-external/dsh-visualize)：对话内的生成式 UI，模型把界面直接画进会话流，带流式预览和鲸鱼蓝主题跟随。这条是全 README 唯一没编的。
+<details>
+<summary>免责声明</summary>
 
-<div align="center">
+本插件纯属娱乐，与 DeepSeek 以及任何真实公司、产品或服务均无关联。广告里的品牌、人物、域名、价格、病毒和承诺均为虚构。插件不会扫描、读取或修改机器上的文件。
 
-https://github.com/user-attachments/assets/93ff08ef-cf32-4a87-bf63-274c1a0a71e2
+「验证修复」只会在用户主动点击后查询一次 GitHub Star 状态，优先使用本机 `gh` 或 token，否则调用匿名公开 API。结果只保存在本机浏览器中。
 
-</div>
-
-## 免责
-
-纯属娱乐。图里的品牌、域名、人物、价格、承诺全是编的，域名打了码；与 DeepSeek 以及任何真实存在的公司、产品、服务均无关联，如有雷同纯属巧合。提示音是 Web Audio 现合成的，没打包任何第三方音频。
-
-那个"安全中心"弹窗是在拿 2000 年代的假杀毒弹窗开玩笑：里面提到的病毒、症状、感染范围全是编的，提到的模型名字只是玩梗，不针对也不影射任何公司的任何产品。它不会扫描、读取或修改你机器上的任何东西。「验证修复」只在你主动点击时问一次 GitHub 你是否 star 过（本机 gh / token，否则匿名公开 API），结果只存你自己的浏览器。
+</details>

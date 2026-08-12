@@ -80,23 +80,34 @@ export function nationalRank(percentile: number): number {
 }
 
 /** Tier names, best first; each applies from its percentile upward. */
-const TIERS: readonly (readonly [floor: number, name: string])[] = [
-  [99, '超凡入圣'],
-  [95, '登峰造极'],
-  [85, '身手不凡'],
-  [60, '略胜一筹'],
-  [30, '泯然众人'],
-  [0, '亟需优化'],
-]
+const TIERS = {
+  zh: [
+    [99, '超凡入圣'],
+    [95, '登峰造极'],
+    [85, '身手不凡'],
+    [60, '略胜一筹'],
+    [30, '泯然众人'],
+    [0, '亟需优化'],
+  ],
+  en: [
+    [99, 'ABSOLUTELY CRACKED'],
+    [95, 'ELITE SILICON'],
+    [85, 'SUSPICIOUSLY FAST'],
+    [60, 'ABOVE AVERAGE'],
+    [30, 'MID-TIER MORTAL'],
+    [0, 'URGENTLY OPTIMIZABLE'],
+  ],
+} as const
 
 /**
  * The tier name for a percentile.
  * @param percentile - as returned by {@link scorePercentile}.
+ * @param locale - language used for the invented title.
  * @returns the tier's name.
  */
-export function tierName(percentile: number): string {
-  for (const [floor, name] of TIERS) if (percentile >= floor) return name
-  return '亟需优化'
+export function tierName(percentile: number, locale: 'zh' | 'en' = 'zh'): string {
+  for (const [floor, name] of TIERS[locale]) if (percentile >= floor) return name
+  return (TIERS[locale][TIERS[locale].length - 1] as readonly [number, string])[1]
 }
 
 /** What the benchmark measured. */

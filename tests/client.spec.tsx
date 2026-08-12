@@ -12,8 +12,8 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import { AdLayer } from '../src/client/AdLayer.tsx'
-import type { AdCreative } from '../src/client/types.ts'
+import { AdLayer, englishGutterCandidates } from '../src/client/AdLayer.tsx'
+import type { AdCreative, PlacedAd } from '../src/client/types.ts'
 import type { SpawnConfig } from '../src/client/schedule.ts'
 import { LEVELS } from '../src/client/VirusToast.tsx'
 import { clearPersisted } from '../src/client/persist.ts'
@@ -215,6 +215,21 @@ function pressNuke(): void {
 }
 
 describe('AdLayer', () => {
+  it('reserves one full-width English skyscraper for each ad tier', () => {
+    const sponsoredTall: AdCreative = { id: 'sponsor-tall', width: 300, height: 480, shape: 'tall', weight: 1, alt: 's', src: 'data:,', sponsor: 'dsh-external/example' }
+    const builtinTall: AdCreative = { id: 'builtin-tall', width: 300, height: 480, shape: 'tall', weight: 1, alt: 'b', src: 'data:,' }
+    const horizontal: AdCreative = { id: 'wide', width: 720, height: 148, shape: 'wide', weight: 1, alt: 'w', src: 'data:,' }
+    const pool = [sponsoredTall, builtinTall, horizontal]
+    const place = (creative: AdCreative, key: string): PlacedAd => ({ key, creative, side: 'left', row: 0, seed: 0, bornAt: 0 })
+
+    expect(englishGutterCandidates(pool, [])).toEqual([sponsoredTall])
+    expect(englishGutterCandidates(pool, [place(sponsoredTall, 's1')])).toEqual([builtinTall])
+    expect(englishGutterCandidates(pool, [
+      place(sponsoredTall, 's1'),
+      place(builtinTall, 'b1'),
+    ])).toEqual([horizontal])
+  })
+
   it('opens at full strength instead of ramping up', () => {
     mount()
     expect(banners()).toHaveLength(FAST.maxAds)

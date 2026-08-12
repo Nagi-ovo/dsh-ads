@@ -9,12 +9,14 @@
  */
 
 import { useEffect, useState, type CSSProperties } from 'react'
-import type { PlacedAd } from './types.ts'
+import type { AdLocale, PlacedAd } from './types.ts'
 import type { AdBox } from './placement.ts'
 import { resolveHitbox, VISUAL_CLOSE_PX } from './hitbox.ts'
 
 /** Props for a single placed banner. */
 export interface AdBannerProps {
+  /** Language used by the host UI. */
+  readonly locale?: AdLocale
   /** The banner instance to draw. */
   readonly ad: PlacedAd
   /** The box the layout assigned it. */
@@ -65,7 +67,7 @@ const imgStyle: CSSProperties = {
  * @param props - see {@link AdBannerProps}.
  * @returns the fixed-position banner element.
  */
-export function AdBanner({ ad, box, hitboxPx, onDismiss, onMisfire }: AdBannerProps) {
+export function AdBanner({ ad, box, hitboxPx, onDismiss, onMisfire, locale = 'zh' }: AdBannerProps) {
   const hit = resolveHitbox(ad.seed, hitboxPx)
   // Entrance: banners slide in from the nearest edge, the way a cheap ad
   // script reveals them after the page has already settled.
@@ -95,7 +97,7 @@ export function AdBanner({ ad, box, hitboxPx, onDismiss, onMisfire }: AdBannerPr
       <div style={closeGlyphStyle} aria-hidden="true">✕</div>
       <button
         type="button"
-        aria-label="关闭广告"
+        aria-label={locale === 'en' ? 'Close advertisement' : '关闭广告'}
         onClick={(event) => {
           event.stopPropagation()
           onDismiss()

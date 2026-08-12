@@ -25,7 +25,7 @@ import { usePersisted, type Anchor } from './persist.ts'
 import { repoFromHref } from './star-check.ts'
 import { FALLBACK_SAFE_AREA, layout, looksLikeSidebar, resolvePlacement, type SafeArea, type Viewport } from './placement.ts'
 import { pruneCooling, targetCount, weightedPick, type SpawnConfig } from './schedule.ts'
-import type { AdCreative, PlacedAd } from './types.ts'
+import type { AdCreative, AdLocale, PlacedAd } from './types.ts'
 
 /** How often the layer re-checks its population target, in ms. */
 const TICK_MS = 2000
@@ -38,6 +38,8 @@ const SPEED_ATTEMPTS = 20
 
 /** Props for the ad layer. */
 export interface AdLayerProps {
+  /** Language used by the host UI and creative pool. */
+  readonly locale?: AdLocale
   /** The banner pool to draw from. */
   readonly creatives: readonly AdCreative[]
   /** The corner pop-up pool, rotated in order. */
@@ -247,14 +249,48 @@ function pickCreative(
   creatives: readonly AdCreative[],
   weights: readonly number[],
   placed: readonly PlacedAd[],
+  locale: AdLocale,
 ): AdCreative | undefined {
+  const candidates = locale === 'en' ? englishGutterCandidates(creatives, placed) : creatives
   const used = new Map<string, number>()
   for (const ad of placed) used.set(ad.creative.id, (used.get(ad.creative.id) ?? 0) + 1)
   let fewest = Infinity
-  for (const c of creatives) fewest = Math.min(fewest, used.get(c.id) ?? 0)
-  const pool = creatives.filter((c) => (used.get(c.id) ?? 0) === fewest)
+  for (const c of candidates) fewest = Math.min(fewest, used.get(c.id) ?? 0)
+  const pool = candidates.filter((c) => (used.get(c.id) ?? 0) === fewest)
   const w = pool.map((c) => weights[creatives.indexOf(c)] ?? c.weight)
   return pool[weightedPick(w, Math.random())]
+}
+
+/**
+ * Keep both English skyscraper treatments above the fold, then spend the
+ * remaining population on shorter banners that still fit below them.
+ *
+ * The selected community plugins remain random per conversation. This only
+ * controls shape and tier: the generated sponsored skyscraper occupies the
+ * first gutter, a built-in skyscraper occupies the other, and horizontal
+ * inventory fills the remaining slots.
+ *
+ * @param creatives - localized built-ins plus selected community plugins.
+ * @param placed - banners already spawned in this population.
+ * @returns the candidates allowed for the next draw.
+ */
+export function englishGutterCandidates(
+  creatives: readonly AdCreative[],
+  placed: readonly PlacedAd[],
+): readonly AdCreative[] {
+  if (placed.length === 0) {
+    const sponsoredTall = creatives.filter((creative) => creative.shape === 'tall' && creative.sponsor !== undefined)
+    if (sponsoredTall.length > 0) return sponsoredTall
+  }
+  if (placed.length === 1) {
+    const builtinTall = creatives.filter((creative) => creative.shape === 'tall' && creative.sponsor === undefined)
+    if (builtinTall.length > 0) return builtinTall
+  }
+  if (placed.length >= 2) {
+    const horizontal = creatives.filter((creative) => creative.shape !== 'tall')
+    if (horizontal.length > 0) return horizontal
+  }
+  return creatives
 }
 
 
@@ -265,6 +301,7 @@ function pickCreative(
  */
 export function AdLayer(props: AdLayerProps) {
   const { creatives, popups, posters, spawn, hitboxPx, chime } = props
+  const locale = props.locale ?? 'zh'
   const { popupFirstDelayMs, posterFirstDelayMs, respawnMs, scareDelayMs, scareHref, speedFirstDelayMs } = props
   const viewport = useViewport()
   const safe = useSafeArea(viewport)
@@ -317,6 +354,17 @@ export function AdLayer(props: AdLayerProps) {
   const posterRound = useRef(0)
   const weights = useMemo(() => creatives.map((c) => c.weight), [creatives])
 
+  // A language switch replaces same-sized creative pools, so pool length is
+  // not a useful change signal. Clear live placements once and let each
+  // scheduler repopulate them with the new language.
+  useEffect(() => {
+    placements.current = 0
+    setAds([])
+    setPopup(undefined)
+    setPoster(undefined)
+    setTakeover(undefined)
+  }, [locale])
+
   // The dynamic tier arrives after a fetch, by which time the first tick has
   // already filled every slot from the built-ins alone — and a full layer
   // never spawns again, so community plugins would never reach the gutters at
@@ -327,6 +375,7 @@ export function AdLayer(props: AdLayerProps) {
   useEffect(() => {
     if (creatives.length === poolSize.current) return
     poolSize.current = creatives.length
+    placements.current = 0
     setAds([])
   }, [creatives.length])
 
@@ -340,30 +389,19 @@ export function AdLayer(props: AdLayerProps) {
         if (current.length >= want) return current.length > want ? current.slice(0, want) : current
         const next = [...current]
         while (next.length < want) {
-          const creative = pickCreative(creatives, weights, next)
+          const creative = pickCreative(creatives, weights, next, locale)
           if (creative === undefined) break
-          // Skyscrapers spawn as a matched pair of the *same* artwork, on the
-          // same side. The layout puts two of them in one column-wide row, and
-          // a pair of different skyscrapers would render at different heights
-          // and leave a ragged gap — two copies of one banner is how a portal
-          // fills that row anyway.
-          const copies = creative.shape === 'tall' ? 2 : 1
-          // Sides alternate per *placement*, not per banner: a skyscraper pair
-          // is one placement occupying two slots, and counting its two copies
-          // separately would skip a turn and pile placements onto one gutter.
           const { side } = resolvePlacement(placements.current)
           placements.current += 1
-          for (let i = 0; i < copies && next.length < want; i += 1) {
-            spawnedTotal.current += 1
-            next.push({
-              key: `${creative.id}-${spawnedTotal.current}`,
-              creative,
-              side,
-              row: next.length,
-              seed: Math.random(),
-              bornAt: now,
-            })
-          }
+          spawnedTotal.current += 1
+          next.push({
+            key: `${creative.id}-${spawnedTotal.current}`,
+            creative,
+            side,
+            row: next.length,
+            seed: Math.random(),
+            bornAt: now,
+          })
         }
         return next
       })
@@ -488,6 +526,7 @@ export function AdLayer(props: AdLayerProps) {
   const defaultAnchor: Anchor = { left: 12, bottom: 12 }
 
   const controls: AdControlsProps = {
+    locale,
     settings,
     onChange: (next) => {
       // Anything switched off leaves immediately rather than lingering until
@@ -527,6 +566,7 @@ export function AdLayer(props: AdLayerProps) {
     >
       {placed.map(({ ad, box }) => (
         <AdBanner
+          locale={locale}
           key={ad.key}
           ad={ad}
           box={box}
@@ -538,6 +578,7 @@ export function AdLayer(props: AdLayerProps) {
       {scare !== undefined && (scare.shield
         ? (
           <ShieldToast
+            locale={locale}
             key={`shield-${scareRound.current}`}
             chime={chime && !muted}
             onClose={() => setScare(undefined)}
@@ -545,6 +586,7 @@ export function AdLayer(props: AdLayerProps) {
         )
         : (
           <VirusToast
+            locale={locale}
             key={`scare-${scareRound.current}`}
             seed={scare.seed}
             chime={chime && !muted}
@@ -563,6 +605,7 @@ export function AdLayer(props: AdLayerProps) {
         ))}
       {speed !== undefined && (
         <SpeedToast
+          locale={locale}
           reading={speed.reading}
           seed={speed.seed}
           chime={chime && !muted}
@@ -572,6 +615,7 @@ export function AdLayer(props: AdLayerProps) {
       )}
       {popup !== undefined && (
         <ToastPopup
+          locale={locale}
           key={popup.key}
           creative={popup.creative}
           seed={popup.seed}
@@ -582,6 +626,7 @@ export function AdLayer(props: AdLayerProps) {
       )}
       {poster !== undefined && (
         <GamePoster
+          locale={locale}
           key={poster.key}
           creative={poster.creative}
           seed={poster.seed}
@@ -597,6 +642,7 @@ export function AdLayer(props: AdLayerProps) {
       )}
       {takeover !== undefined && (
         <Lightbox
+          locale={locale}
           creative={takeover.creative}
           seed={takeover.seed}
           onClose={() => {

@@ -1,11 +1,11 @@
 /**
  * The dynamic tier: real community plugins, drawn as fake advertisements.
  *
- * This module owns the *gutter* half of it — a fixed eight per conversation,
- * because a column laid out as a running total cannot swap a banner without
- * shoving everything below it. Working through the rest of the hub is the
- * feed's job; see [feed.ts](./feed.ts) for why that placement can do what this
- * one cannot.
+ * This module owns the *gutter* half of it. Chinese mode keeps the original
+ * eight-plugin rotation; English mode uses three, leaving most edge inventory
+ * to the localized built-ins instead of turning both columns into a plugin
+ * directory. Working through the rest of the hub is the feed's job; see
+ * [feed.ts](./feed.ts) for why that placement can carry the complete list.
  *
  * One fetch per page load, shared at module scope: both placements want the
  * same list, and asking the host twice for a joke would be rude.
@@ -19,13 +19,25 @@ import { setFeedPlugins } from './feed.ts'
 import { pluginCreative } from './plugin-banner.ts'
 import { CONTRIB_ADS } from './contrib-ads.generated.ts'
 import { readLedger, recordSeen, rotate, writeLedger } from './rotation.ts'
-import type { AdCreative } from './types.ts'
+import type { AdCreative, AdLocale } from './types.ts'
 
-/** How many plugins one conversation advertises. */
-const PER_CONVERSATION = 8
+/** How many plugins one Chinese conversation advertises in its gutters. */
+const ZH_PER_CONVERSATION = 8
+
+/** How many plugins one English conversation advertises in its gutters. */
+const EN_PER_CONVERSATION = 3
 
 /** Every third pick is drawn as a skyscraper, so the gutters get both shapes. */
 const TALL_EVERY = 3
+
+/**
+ * Resolve the gutter sponsor budget without reducing the feed inventory.
+ * @param locale - active DSH language.
+ * @returns plugin creatives admitted to the side gutters.
+ */
+export function gutterSponsorCount(locale: AdLocale): number {
+  return locale === 'en' ? EN_PER_CONVERSATION : ZH_PER_CONVERSATION
+}
 
 /** Shared fetch, started on first use and reused for the page's lifetime. */
 let pending: Promise<readonly SponsoredPlugin[]> | undefined
@@ -57,16 +69,18 @@ const CONTRIB = new Map(CONTRIB_ADS.map((entry) => [entry.slug, entry]))
  * @param index - position in the rotation, which decides the shape.
  * @returns the creative.
  */
-function creativeFor(plugin: SponsoredPlugin, index: number): AdCreative {
-  const contrib = CONTRIB.get(plugin.slug)
+function creativeFor(plugin: SponsoredPlugin, index: number, locale: AdLocale): AdCreative {
+  // Current contributed copy/art is Chinese-only. English mode falls back to
+  // the generated English banner instead of showing a mixed-language ad.
+  const contrib = locale === 'zh' ? CONTRIB.get(plugin.slug) : undefined
   const shape = index % TALL_EVERY === TALL_EVERY - 1 ? 'tall' : 'wide'
   const art = contrib?.art
-  if (art === undefined) return pluginCreative(plugin, shape, contrib?.copy ?? {})
+  if (art === undefined) return pluginCreative(plugin, shape, contrib?.copy ?? {}, locale)
   // Contributed artwork replaces the drawing entirely, but keeps the plugin's
   // identity: the takeover still links to the repository, and impressions
   // still count against the same slug.
   return {
-    id: `hub-art-${plugin.slug}`,
+    id: `hub-art-${locale}-${plugin.slug}`,
     width: art.width,
     height: art.height,
     shape: art.shape,
@@ -83,25 +97,27 @@ function creativeFor(plugin: SponsoredPlugin, index: number): AdCreative {
  *
  * @param sessionId - the open conversation; changing it reshuffles the picks,
  * which is what "rotates per conversation" means in practice.
+ * @param locale - language of generated plugin creatives.
  * @returns creatives to merge into the banner pool.
  */
-export function useSponsoredAds(sessionId: string | undefined): readonly AdCreative[] {
+export function useSponsoredAds(sessionId: string | undefined, locale: AdLocale = 'zh'): readonly AdCreative[] {
   const [plugins, setPlugins] = useState<readonly SponsoredPlugin[]>([])
   useEffect(() => {
     let mounted = true
     pending ??= fetchPlugins()
     void pending.then((list) => {
-      // The feed takes the whole list; the gutters take the eight below. One
-      // fetch, two placements with genuinely different appetites.
+      // The feed takes the whole list; the gutters take the locale-specific
+      // subset below. One fetch, two placements with different capacities.
       setFeedPlugins(list)
       if (mounted) setPlugins(list)
     })
     return () => { mounted = false }
   }, [])
 
+  const sponsorCount = gutterSponsorCount(locale)
   const chosen = useMemo(
-    () => rotate(plugins, readLedger(), PER_CONVERSATION, sessionId ?? ''),
-    [plugins, sessionId],
+    () => rotate(plugins, readLedger(), sponsorCount, sessionId ?? ''),
+    [plugins, sessionId, sponsorCount],
   )
 
   // Counted once per rotation, not once per render: the ledger is what decides
@@ -112,5 +128,5 @@ export function useSponsoredAds(sessionId: string | undefined): readonly AdCreat
     writeLedger(recordSeen(readLedger(), chosen))
   }, [chosen])
 
-  return useMemo(() => chosen.map(creativeFor), [chosen])
+  return useMemo(() => chosen.map((plugin, index) => creativeFor(plugin, index, locale)), [chosen, locale])
 }

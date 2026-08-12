@@ -19,8 +19,9 @@
  */
 
 import type { SponsoredPlugin } from '../protocol.ts'
+import { EN_SPONSORED_PLUGIN_TEMPLATES } from './builtin-ads.ts'
 import { hashString } from './stable-hash.ts'
-import type { AdCreative } from './types.ts'
+import type { AdCreative, AdLocale } from './types.ts'
 
 /** Rendered size of an auto-drawn horizontal banner, in SVG user units. */
 const WIDE = { width: 720, height: 148 } as const
@@ -63,21 +64,38 @@ const PALETTES: readonly Palette[] = [
 ]
 
 /** Headline templates; `{name}` is the repository. */
-const HEADLINES: readonly string[] = [
-  '【{name}】震撼上线',
-  '独家！{name} 内部体验版',
-  '{name} 限时免费 手慢无',
-  '你的 DSH 还差一个 {name}',
-  '装了 {name} 的都说好',
-  '{name} 今日开放 名额告急',
-  '别再手动了！{name} 一键搞定',
-]
+const HEADLINES: Readonly<Record<AdLocale, readonly string[]>> = {
+  zh: [
+    '【{name}】震撼上线',
+    '独家！{name} 内部体验版',
+    '{name} 限时免费 手慢无',
+    '你的 DSH 还差一个 {name}',
+    '装了 {name} 的都说好',
+    '{name} 今日开放 名额告急',
+    '别再手动了！{name} 一键搞定',
+  ],
+  en: [
+    'Meet {name}',
+    '{name}, now in the DSH ecosystem',
+    'Your next run could use {name}',
+    'Add {name} to your agent stack',
+    '{name} just shipped',
+    'Still working without {name}?',
+    'A community pick: {name}',
+  ],
+}
 
 /** Top-left flashing tag. */
-const BADGES: readonly string[] = ['刚刚更新', '本站强推', '今日热门', '新版首发', '强烈推荐', '独家发布']
+const BADGES: Readonly<Record<AdLocale, readonly string[]>> = {
+  zh: ['刚刚更新', '本站强推', '今日热门', '新版首发', '强烈推荐', '独家发布'],
+  en: ['JUST UPDATED', 'COMMUNITY PICK', 'TRENDING', 'NEW RELEASE', 'POPULAR', 'FEATURED'],
+}
 
 /** Call-to-action labels. */
-const BUTTONS: readonly string[] = ['立即安装', '一键装上', '点我领取', '马上试试', '免费获取']
+const BUTTONS: Readonly<Record<AdLocale, readonly string[]>> = {
+  zh: ['立即安装', '一键装上', '点我领取', '马上试试', '免费获取'],
+  en: ['VIEW PLUGIN', 'OPEN REPO', 'ADD TO DSH', 'SEE DETAILS', 'TRY PLUGIN'],
+}
 
 /** Escape the five characters that would otherwise close an SVG element. */
 function xml(text: string): string {
@@ -290,6 +308,7 @@ export interface AdCopy {
 
 /** Everything the two layouts need, already chosen. */
 interface Draft {
+  readonly seed: number
   readonly palette: Palette
   readonly headline: string
   readonly sub: string
@@ -303,16 +322,81 @@ interface Draft {
  * @param copy - contributor overrides.
  * @returns the resolved draft.
  */
-function draft(plugin: SponsoredPlugin, copy: AdCopy): Draft {
+function draft(plugin: SponsoredPlugin, copy: AdCopy, locale: AdLocale): Draft {
   const seed = hashString(plugin.slug)
   const paletteIndex = copy.palette ?? seed
+  const headlines = HEADLINES[locale]
+  const badges = BADGES[locale]
+  const buttons = BUTTONS[locale]
+  const englishSubs = [
+    'Community-built extension for DeepSeek Harness',
+    'Add a new capability to your agent setup',
+    'Open-source plugin for the DSH ecosystem',
+  ]
   return {
+    seed,
     palette: PALETTES[Math.abs(paletteIndex) % PALETTES.length] as Palette,
-    headline: copy.headline ?? (HEADLINES[(seed >>> 3) % HEADLINES.length] as string).replace('{name}', plugin.name),
-    sub: copy.sub ?? plugin.description,
-    badge: copy.badge ?? (BADGES[(seed >>> 7) % BADGES.length] as string),
-    button: copy.button ?? (BUTTONS[(seed >>> 11) % BUTTONS.length] as string),
+    headline: copy.headline ?? (headlines[(seed >>> 3) % headlines.length] as string).replace('{name}', plugin.name),
+    // English plugin descriptions in the registry may still be Chinese. The
+    // sponsor slug remains visible and clickable, while the ad body uses a
+    // deliberately generic Western clickbait proof line instead of leaking a
+    // mixed-language paragraph into English mode.
+    sub: copy.sub ?? (locale === 'en'
+      ? englishSubs[(seed >>> 13) % englishSubs.length] as string
+      : plugin.description),
+    badge: copy.badge ?? (badges[(seed >>> 7) % badges.length] as string),
+    button: copy.button ?? (buttons[(seed >>> 11) % buttons.length] as string),
   }
+}
+
+/** Raster source plus a directional shade that keeps live copy readable. */
+function englishRaster(template: AdCreative, size: { width: number; height: number }, copySide: 'left' | 'right' | 'bottom'): string {
+  const gradient = copySide === 'bottom'
+    ? '<linearGradient id="copy-shade" x1="0" y1="0" x2="0" y2="1"><stop offset=".54" stop-color="#080817" stop-opacity="0"/><stop offset=".72" stop-color="#080817" stop-opacity=".82"/><stop offset="1" stop-color="#080817" stop-opacity=".98"/></linearGradient>'
+    : `<linearGradient id="copy-shade" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#071426" stop-opacity="${copySide === 'left' ? '.96' : '.04'}"/><stop offset=".48" stop-color="#071426" stop-opacity=".55"/><stop offset="1" stop-color="#071426" stop-opacity="${copySide === 'right' ? '.96' : '.04'}"/></linearGradient>`
+  return `<defs>${gradient}</defs><image href="${template.src}" width="${size.width}" height="${size.height}" preserveAspectRatio="xMidYMid slice"/>`
+    + `<rect width="${size.width}" height="${size.height}" fill="url(#copy-shade)"/>`
+}
+
+/** A compact live-text button over imagegen artwork. */
+function englishButton(text: string, box: { x: number; y: number; w: number; h: number }): string {
+  return `<g transform="translate(${box.x},${box.y})"><rect width="${box.w}" height="${box.h}" rx="6" fill="#f9dc4b" stroke="#fff" stroke-width="2"/>`
+    + `<text x="${box.w / 2}" y="${box.h * 0.68}" font-family="${FONT}" font-size="${Math.round(box.h * 0.43)}" font-weight="900" text-anchor="middle" fill="#11182b">${xml(text)}  →</text></g>`
+}
+
+/** Select one generated raster template while preserving the requested shape. */
+function englishTemplate(shape: 'wide' | 'tall', seed: number): AdCreative {
+  const matching = EN_SPONSORED_PLUGIN_TEMPLATES.filter((template) => template.shape === shape)
+  const template = matching[Math.abs(seed) % matching.length]
+  if (template === undefined) throw new Error(`missing English sponsored-plugin ${shape} artwork`)
+  return template
+}
+
+/** English sponsored-plugin banner over an imagegen source. */
+function drawEnglishWide(plugin: SponsoredPlugin, spec: Draft): string {
+  const template = englishTemplate('wide', spec.seed)
+  const left = template.id === 'plugin-pitch'
+  const x = left ? 20 : 382
+  const anchor = left ? 'start' : 'start'
+  return dataUri(WIDE, englishRaster(template, WIDE, left ? 'left' : 'right')
+    + `<text x="${x}" y="25" font-family="system-ui,sans-serif" font-size="13" font-weight="850" letter-spacing="1.6" fill="#9ff7ff">SPONSORED PLUGIN</text>`
+    + `<text x="${x}" y="64" font-family="${FONT}" font-size="29" font-weight="900" text-anchor="${anchor}" fill="#fff" stroke="#071426" stroke-width="3" paint-order="stroke">${xml(clamp(plugin.name, 17))}</text>`
+    + `<text x="${x}" y="88" font-family="${FONT}" font-size="14" font-weight="650" fill="#d9eef7">${xml(clamp(spec.sub, 30))}</text>`
+    + englishButton(spec.button, { x, y: 103, w: 154, h: 33 })
+    + `<text x="700" y="139" font-family="system-ui,sans-serif" font-size="8" text-anchor="end" fill="#fff" opacity=".72">${xml(plugin.slug)} · PARODY AD</text>`)
+}
+
+/** English skyscraper over a dedicated imagegen portrait source. */
+function drawEnglishTall(plugin: SponsoredPlugin, spec: Draft): string {
+  const template = englishTemplate('tall', spec.seed)
+  const title = wrap(plugin.name, 13, 2)
+    .map((line, index) => `<text x="150" y="${365 + index * 31}" font-family="${FONT}" font-size="27" font-weight="900" text-anchor="middle" fill="#fff">${xml(line)}</text>`)
+    .join('')
+  return dataUri(TALL, englishRaster(template, TALL, 'bottom')
+    + '<text x="150" y="337" font-family="system-ui,sans-serif" font-size="12" font-weight="850" letter-spacing="1.4" text-anchor="middle" fill="#9ff7ff">SPONSORED PLUGIN</text>'
+    + title
+    + englishButton(spec.button, { x: 49, y: 422, w: 202, h: 39 })
+    + '<text x="150" y="475" font-family="system-ui,sans-serif" font-size="7" text-anchor="middle" fill="#fff" opacity=".65">ADVERTISEMENT · UNAFFILIATED PARODY</text>')
 }
 
 /** Wrap a body into an SVG data URI. */
@@ -348,11 +432,9 @@ function drawWide(plugin: SponsoredPlugin, spec: Draft): string {
 /**
  * Draw the skyscraper.
  *
- * Set much larger than the horizontal banner and given far less to say. Two
- * skyscrapers share one gutter row, so a 300-unit design lands on screen at
- * something like 125 CSS pixels — a third of its drawn size. Body copy sized
- * for the drawing is unreadable there, which is why this layout spends its
- * height on a handful of big words instead of the full description.
+ * Set larger than the horizontal banner and given far less to say. It occupies
+ * a full gutter by itself, so the layout spends its height on a handful of big
+ * words instead of repeating the full plugin description.
  */
 function drawTall(plugin: SponsoredPlugin, spec: Draft): string {
   const { palette } = spec
@@ -380,23 +462,29 @@ function drawTall(plugin: SponsoredPlugin, spec: Draft): string {
  * @param plugin - the subject.
  * @param shape - which gutter family to draw for.
  * @param copy - contributor overrides, if any.
+ * @param locale - language of generated chrome and headline templates.
  * @returns the creative, carrying the repository URL as its takeover link.
  */
 export function pluginCreative(
   plugin: SponsoredPlugin,
   shape: 'wide' | 'tall',
   copy: AdCopy = {},
+  locale: AdLocale = 'zh',
 ): AdCreative {
-  const spec = draft(plugin, copy)
+  const spec = draft(plugin, copy, locale)
   const size = shape === 'tall' ? TALL : WIDE
   return {
-    id: `hub-${shape}-${plugin.slug}`,
+    id: `hub-${locale}-${shape}-${plugin.slug}`,
     width: size.width,
     height: size.height,
     shape,
     weight: 1,
-    alt: `${spec.headline} — ${spec.sub}`,
-    src: shape === 'tall' ? drawTall(plugin, spec) : drawWide(plugin, spec),
+    alt: locale === 'en'
+      ? `Sponsored plugin: ${plugin.name} — ${spec.headline}`
+      : `${spec.headline} — ${spec.sub}`,
+    src: locale === 'en'
+      ? (shape === 'tall' ? drawEnglishTall(plugin, spec) : drawEnglishWide(plugin, spec))
+      : (shape === 'tall' ? drawTall(plugin, spec) : drawWide(plugin, spec)),
     href: plugin.url,
     sponsor: plugin.slug,
   }

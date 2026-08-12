@@ -12,7 +12,7 @@
  */
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import type { AdCreative } from './types.ts'
+import type { AdCreative, AdLocale } from './types.ts'
 import { resolveHitbox, VISUAL_CLOSE_PX } from './hitbox.ts'
 
 /** Seconds before the honest skip button appears. */
@@ -20,6 +20,8 @@ const SKIP_AFTER_S = 3
 
 /** Props for the full-screen ad takeover. */
 export interface LightboxProps {
+  /** Language used by the host UI. */
+  readonly locale?: AdLocale
   /** The banner that was mistapped. */
   readonly creative: AdCreative
   /** Frozen randomness of the originating banner, reused for the decoy ✕. */
@@ -66,7 +68,7 @@ const skipStyle: CSSProperties = {
  * @param props - see {@link LightboxProps}.
  * @returns the scrim element.
  */
-export function Lightbox({ creative, seed, onClose }: LightboxProps) {
+export function Lightbox({ creative, seed, onClose, locale = 'zh' }: LightboxProps) {
   const [left, setLeft] = useState(SKIP_AFTER_S)
   const [muted, setMuted] = useState(true)
   const videoRef = useRef<HTMLVideoElement | null>(null)
@@ -145,7 +147,7 @@ export function Lightbox({ creative, seed, onClose }: LightboxProps) {
         </div>
         <button
           type="button"
-          aria-label="关闭广告"
+          aria-label={locale === 'en' ? 'Close advertisement' : '关闭广告'}
           onClick={onClose}
           style={{
             position: 'absolute',
@@ -171,7 +173,7 @@ export function Lightbox({ creative, seed, onClose }: LightboxProps) {
             rel="noreferrer noopener"
             style={{ ...skipStyle, textDecoration: 'none' }}
           >
-            🔗 去看看这个插件
+            {locale === 'en' ? '🔗 VIEW THIS PLUGIN' : '🔗 去看看这个插件'}
           </a>
         )}
         {creative.video !== undefined && (
@@ -190,12 +192,18 @@ export function Lightbox({ creative, seed, onClose }: LightboxProps) {
               })
             }}
           >
-            {muted ? '🔇 点击有声播放' : '🔊 静音'}
+            {muted
+              ? (locale === 'en' ? '🔇 TAP FOR SOUND' : '🔇 点击有声播放')
+              : (locale === 'en' ? '🔊 MUTE' : '🔊 静音')}
           </button>
         )}
         {left > 0
-          ? <div style={{ ...skipStyle, opacity: 0.5, cursor: 'default' }}>{left} 秒后可跳过</div>
-          : <button type="button" style={skipStyle} onClick={onClose}>跳过广告</button>}
+          ? (
+            <div style={{ ...skipStyle, opacity: 0.5, cursor: 'default' }}>
+              {locale === 'en' ? `SKIP IN ${left}` : `${left} 秒后可跳过`}
+            </div>
+            )
+          : <button type="button" style={skipStyle} onClick={onClose}>{locale === 'en' ? 'SKIP AD' : '跳过广告'}</button>}
       </div>
     </div>
   )

@@ -30,6 +30,7 @@ import ShieldAlert from 'lucide-react/dist/esm/icons/shield-alert.mjs'
 import Volume2 from 'lucide-react/dist/esm/icons/volume-2.mjs'
 import { retireAds, useRetired } from './retire.ts'
 import { PLACEMENTS, useAdSettings, type AdSettings } from './settings.ts'
+import type { AdLocale } from './types.ts'
 
 /**
  * One glyph per row, each one naming what the row actually is.
@@ -51,14 +52,14 @@ const ICONS: Readonly<Record<string, ReactNode>> = {
 }
 
 /** What each switch actually turns off, in the user's terms. */
-const BLURBS: Readonly<Record<string, string>> = {
-  gutter: '正文左右两侧的广告栏',
-  feed: '对话里每隔几轮插入的插件推荐，是唯一能点进仓库的广告',
-  reward: '随机出现的财神鲸转盘，每轮对话只能抽 1 次',
-  popup: '右下角滑出的图片弹窗',
-  speed: '启动时报告本次加载耗时，并给你一个编造的全国排名',
-  scare: '假的病毒告警，点「暂不处理」会变本加厉',
-  poster: '左下角的游戏海报，可以拖动和折叠',
+const BLURBS: Readonly<Record<string, Readonly<Record<AdLocale, string>>>> = {
+  gutter: { zh: '正文左右两侧的广告栏', en: 'Banner columns on both sides of the conversation' },
+  feed: { zh: '对话里每隔几轮插入的插件推荐，是唯一能点进仓库的广告', en: 'Plugin recommendations inserted between turns — the only ads with real links' },
+  reward: { zh: '随机出现的财神鲸转盘，每轮对话只能抽 1 次', en: 'A random jackpot wheel with one draw per conversation turn' },
+  popup: { zh: '右下角滑出的图片弹窗', en: 'Image pop-ups that slide out of the bottom-right corner' },
+  speed: { zh: '启动时报告本次加载耗时，并给你一个编造的全国排名', en: 'Reports real load time and a completely fabricated national ranking' },
+  scare: { zh: '假的病毒告警，点「暂不处理」会变本加厉', en: 'A fake virus warning that gets worse if you choose “Not now”' },
+  poster: { zh: '左下角的游戏海报，可以拖动和折叠', en: 'A draggable, collapsible fake-game poster in the bottom-left corner' },
 }
 
 const rowStyle: CSSProperties = {
@@ -162,7 +163,7 @@ function Toggle({ on, label, onToggle }: ToggleProps) {
  * Draw the settings page.
  * @returns the section content column.
  */
-export function AdsSection() {
+export function AdsSection({ locale = 'zh' }: { readonly locale?: AdLocale }) {
   const [settings, setSettings] = useAdSettings()
   const retired = useRetired()
   const set = (patch: Partial<AdSettings>) => setSettings({ ...settings, ...patch })
@@ -172,29 +173,33 @@ export function AdsSection() {
           has to say plainly whose settings these are before anything else. */}
       <div style={sourceStyle}>
         <div>
-          本页由社区插件{' '}
+          {locale === 'en' ? 'This page is provided by the community plugin ' : '本页由社区插件 '}
           <a href={REPO_URL} target="_blank" rel="noreferrer noopener" style={linkStyle}>
             @dsh-external/dsh-ads
           </a>{' '}
-          提供，非 DeepSeek 官方功能。
+          {locale === 'en' ? ', not by DeepSeek.' : ' 提供，非 DeepSeek 官方功能。'}
         </div>
-        <div style={{ marginTop: 2 }}>广告内容纯属娱乐，均为虚构。</div>
+        <div style={{ marginTop: 2 }}>
+          {locale === 'en' ? 'Every advertisement is fictional and for entertainment.' : '广告内容纯属娱乐，均为虚构。'}
+        </div>
       </div>
       <div style={{ ...blurbStyle, marginBottom: 6, opacity: 0.6 }}>
-        选择哪些广告位继续出现。这里的选择会记住，下次启动依然生效。
+        {locale === 'en'
+          ? 'Choose which ad placements remain active. Your choices are saved for the next launch.'
+          : '选择哪些广告位继续出现。这里的选择会记住，下次启动依然生效。'}
       </div>
       {PLACEMENTS.map((row) => (
         <div key={row.key} style={rowStyle}>
           <div>
             <div style={labelStyle}>
               <span style={iconStyle} aria-hidden="true">{ICONS[row.key]}</span>
-              {row.label}
+              {row.label[locale]}
             </div>
-            <div style={blurbStyle}>{BLURBS[row.key]}</div>
+            <div style={blurbStyle}>{BLURBS[row.key]?.[locale]}</div>
           </div>
           <Toggle
             on={settings[row.key]}
-            label={row.label}
+            label={row.label[locale]}
             onToggle={() => set({ [row.key]: !settings[row.key] })}
           />
         </div>
@@ -203,13 +208,17 @@ export function AdsSection() {
         <div>
           <div style={labelStyle}>
             <span style={iconStyle} aria-hidden="true"><Volume2 size={17} /></span>
-            提示音
+            {locale === 'en' ? 'Sound effects' : '提示音'}
           </div>
-          <div style={blurbStyle}>弹窗和海报出现时的「叮」一声，由 Web Audio 现场合成</div>
+          <div style={blurbStyle}>
+            {locale === 'en'
+              ? 'The synthesized “ding” when pop-ups and posters arrive'
+              : '弹窗和海报出现时的「叮」一声，由 Web Audio 现场合成'}
+          </div>
         </div>
         <Toggle
           on={!settings.muted}
-          label="提示音"
+          label={locale === 'en' ? 'Sound effects' : '提示音'}
           onToggle={() => set({ muted: !settings.muted })}
         />
       </div>
@@ -219,15 +228,23 @@ export function AdsSection() {
       <div style={{ marginTop: 22, paddingTop: 18, borderTop: '1px solid rgba(128, 128, 128, 0.22)' }}>
         <div style={{ ...blurbStyle, marginTop: 0, marginBottom: 10 }}>
           {retired
-            ? '本次会话的广告已经全部关闭，刷新页面后按上面的开关恢复。'
-            : '想现在清净一下，但不改上面的选择：'}
+            ? (locale === 'en'
+                ? 'All ads are closed for this session. Reload to restore the placements above.'
+                : '本次会话的广告已经全部关闭，刷新页面后按上面的开关恢复。')
+            : (locale === 'en'
+                ? 'Need a quiet moment without changing those saved choices?'
+                : '想现在清净一下，但不改上面的选择：')}
         </div>
         <button type="button" style={quietButtonStyle} onClick={retireAds} disabled={retired}>
-          {retired ? '本次已关闭' : '立刻关闭所有广告（刷新后恢复）'}
+          {retired
+            ? (locale === 'en' ? 'Closed for this session' : '本次已关闭')
+            : (locale === 'en' ? 'Close every ad until reload' : '立刻关闭所有广告（刷新后恢复）')}
         </button>
       </div>
       <div style={{ ...blurbStyle, marginTop: 18 }}>
-        开关全部关掉这个插件就没有任何显示了，但它还装着 —— 想彻底移除请卸载插件本身。
+        {locale === 'en'
+          ? 'Turning every placement off hides the plugin, but does not uninstall it. Remove the plugin itself to delete it completely.'
+          : '开关全部关掉这个插件就没有任何显示了，但它还装着 —— 想彻底移除请卸载插件本身。'}
       </div>
     </div>
   )

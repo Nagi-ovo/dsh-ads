@@ -1,6 +1,6 @@
 {
   "name": "@dsh-external/dsh-ads",
-  "description": "DSH ad-infestation plugin: a DeepSeek-flavoured 2000s Chinese ad layer that grows across the web UI over a session, complete with corner pop-ups, a chime, and close buttons whose real hitbox is smaller than the ✕ you are aiming at.",
+  "description": "DSH ad-infestation plugin: localized Chinese portal ads and English scam-ad parody, with fake pop-ups, a jackpot wheel, rewarded inference ads, and fake-game animation.",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -23,7 +23,7 @@
     "contrib"
   ],
   "scripts": {
-    "assets": "node scripts/build-assets.mjs && node scripts/build-contrib.mjs",
+    "assets": "node scripts/build-english-artwork.mjs && node scripts/build-assets.mjs && node scripts/build-contrib.mjs",
     "build": "tsdown",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.client.json",
     "test": "vitest run",
@@ -36,18 +36,21 @@
     },
     "client": {
       "inject": [
-        "@deepseek-ai/dsh-client-runtime"
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-locale"
       ],
       "platform": "web"
     }
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1-rc.1",
+    "@deepseek-ai/dsh-client-locale": "^0.0.1-rc.1",
     "@deepseek-ai/schemastery": "^3.18.1-rc.1",
     "react": "^18.2.0"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "link:../test-Nagi-ovo/vendor/cordis",
+    "@deepseek-ai/dsh-client-locale": "link:../test-Nagi-ovo/packages/client/locale",
     "@deepseek-ai/dsh-client-runtime": "link:../test-Nagi-ovo/packages/client/runtime",
     "@deepseek-ai/dsh-client-ui-conversation": "link:../test-Nagi-ovo/packages/client/ui-conversation",
     "@deepseek-ai/dsh-client-ui-primitives": "link:../test-Nagi-ovo/packages/client/ui-primitives",

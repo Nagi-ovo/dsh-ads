@@ -12,7 +12,7 @@ import {
   useCallback, useEffect, useRef, useState, type CSSProperties,
 } from 'react'
 import { createPortal } from 'react-dom'
-import type { AdCreative } from './types.ts'
+import type { AdCreative, AdLocale } from './types.ts'
 import { useRetired } from './retire.ts'
 import { useAdSettings } from './settings.ts'
 import { hashString } from './stable-hash.ts'
@@ -54,6 +54,14 @@ const V4_UNLOCK_STAGES = [
   '尊贵身份激活',
 ] as const
 
+/** English unlock labels preserve the same four-stage progress calculation. */
+const EN_V4_UNLOCK_STAGES = [
+  'OFFICIAL ACCESS MATCH',
+  'V4 PRO WEIGHT DOWNLOAD',
+  'ULTRA-FAST LANE QUEUE',
+  'PREMIUM IDENTITY ACTIVATION',
+] as const
+
 /** One wheel prize and the model-assembly progress it contributes. */
 export interface WheelPrize {
   readonly label: string
@@ -72,6 +80,18 @@ const WHEEL_PRIZES = [
   { label: 'V4 Pro', progress: REWARD_PROGRESS_TARGET },
 ] as const satisfies readonly WheelPrize[]
 
+/** English labels for canonical prize names stored by the state machine. */
+const EN_PRIZE_LABELS: Readonly<Record<string, string>> = {
+  谢谢参与: 'THANKS FOR PLAYING',
+  权重碎片: 'WEIGHT SHARD',
+  'Attention Head': 'ATTENTION HEAD',
+  'KV Cache': 'KV CACHE',
+  'Transformer 层': 'TRANSFORMER LAYER',
+  'MoE 专家': 'MOE EXPERT',
+  '1B 参数': '1B PARAMETERS',
+  'V4 Pro': 'V4 PRO',
+}
+
 /** The grand prize is assembled from component prizes rather than drawn early. */
 const COMPONENT_PRIZES: readonly WheelPrize[] = WHEEL_PRIZES.slice(0, -1)
 
@@ -87,6 +107,8 @@ interface GateTarget {
 
 /** Props for the inference reward gate. */
 export interface InferenceRewardGateProps {
+  /** Language used by the host UI. */
+  readonly locale?: AdLocale
   /** God-of-Wealth whale artwork; exact copy is rendered as HTML above it. */
   readonly creative: AdCreative
   /** Conversation identity used to make the random schedule stable across renders. */
@@ -226,6 +248,7 @@ export function rewardTurnEligible(
 
 /** Props for the visible prize-wheel card. */
 interface RewardCardProps {
+  readonly locale: AdLocale
   readonly creative: AdCreative
   readonly drawSeed: string
   readonly progress: number
@@ -244,7 +267,7 @@ interface PendingDraw {
  * @param props - artwork, accumulated progress, this turn's seed, and reveal actions.
  * @returns the inline rewarded-ad card.
  */
-function RewardCard({ creative, drawSeed, progress, onPrize, onUnlock }: RewardCardProps) {
+function RewardCard({ creative, drawSeed, progress, onPrize, onUnlock, locale }: RewardCardProps) {
   const [rotation, setRotation] = useState(0)
   const [result, setResult] = useState<WheelPrize | undefined>(undefined)
   const [pending, setPending] = useState<PendingDraw | undefined>(undefined)
@@ -258,6 +281,10 @@ function RewardCard({ creative, drawSeed, progress, onPrize, onUnlock }: RewardC
   const unlocked = progress >= REWARD_PROGRESS_TARGET
   const spinning = pending !== undefined
   const drawn = result !== undefined
+  const stages = locale === 'en' ? EN_V4_UNLOCK_STAGES : V4_UNLOCK_STAGES
+  const prizeLabel = (prize: WheelPrize): string => locale === 'en'
+    ? EN_PRIZE_LABELS[prize.label] ?? prize.label.toUpperCase()
+    : prize.label
   const spin = () => {
     if (spinning || drawn || unlocked) return
     const prize = drawPrize(drawSeed, progress)
@@ -273,7 +300,11 @@ function RewardCard({ creative, drawSeed, progress, onPrize, onUnlock }: RewardC
     setPending(undefined)
   }
   return (
-    <section style={cardStyle} aria-label="V4 Pro 正式版限时解锁" data-dsh-reward-gate>
+    <section
+      style={cardStyle}
+      aria-label={locale === 'en' ? 'Limited-time V4 Pro official unlock' : 'V4 Pro 正式版限时解锁'}
+      data-dsh-reward-gate
+    >
       <style>{`
         .dsh-reward-layout {
           display: grid;
@@ -319,41 +350,51 @@ function RewardCard({ creative, drawSeed, progress, onPrize, onUnlock }: RewardC
       <div className="dsh-reward-layout">
         <div>
           <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1.2, color: '#ffe99a' }}>
-            DeepSeek V4 Pro 正式版 财神鲸专场
+            {locale === 'en' ? 'DEEPSEEK V4 PRO · JACKPOT ORCA EVENT' : 'DeepSeek V4 Pro 正式版 财神鲸专场'}
           </div>
           <h2 style={{ margin: '6px 0 0', maxWidth: 430, fontSize: 26, lineHeight: 1.12, textShadow: '0 2px 0 #8c001d' }}>
-            转到 V4 Pro 正式版才算你赢
+            {locale === 'en' ? 'LAND ON V4 PRO OR IT DOESN’T COUNT' : '转到 V4 Pro 正式版才算你赢'}
           </h2>
           <p style={{ margin: '7px 0 0', fontSize: 12, fontWeight: 700, color: '#fff2bd' }}>
-            每轮对话只有 1 次机会，抽中模型组件才能涨进度
+            {locale === 'en'
+              ? 'ONE SPIN PER TURN. MODEL COMPONENTS MOVE THE PROGRESS BAR.'
+              : '每轮对话只有 1 次机会，抽中模型组件才能涨进度'}
           </p>
           <div aria-live="polite" style={{ minHeight: 45, marginTop: 11, padding: '8px 11px', border: '1px solid rgba(255, 232, 134, 0.65)', borderRadius: 12, background: 'rgba(103, 0, 15, 0.62)' }}>
-            <div style={{ fontSize: 10, fontWeight: 800, color: '#ffd96a' }}>本轮结果</div>
+            <div style={{ fontSize: 10, fontWeight: 800, color: '#ffd96a' }}>
+              {locale === 'en' ? 'THIS TURN' : '本轮结果'}
+            </div>
             <strong data-dsh-draw-result style={{ display: 'block', marginTop: 2, fontSize: 15 }}>
               {spinning
-                ? '财神鲸正在打捞模型组件…'
+                ? (locale === 'en' ? 'JACKPOT ORCA IS SALVAGING MODEL PARTS…' : '财神鲸正在打捞模型组件…')
                 : result === undefined
-                  ? '本轮抽奖资格已到账'
+                  ? (locale === 'en' ? 'YOUR ONE SPIN HAS ARRIVED' : '本轮抽奖资格已到账')
                   : result.label === 'V4 Pro'
-                    ? '抽中 V4 Pro 正式版'
+                    ? (locale === 'en' ? 'YOU LANDED ON OFFICIAL V4 PRO' : '抽中 V4 Pro 正式版')
                     : result.progress === 0
-                      ? '谢谢参与，本轮进度一动不动'
-                      : `抽中 ${result.label}，解锁进度 +${result.progress}%`}
+                      ? (locale === 'en' ? 'THANKS FOR PLAYING. PROGRESS DID NOT MOVE.' : '谢谢参与，本轮进度一动不动')
+                      : (locale === 'en'
+                          ? `${prizeLabel(result)} FOUND · UNLOCK +${result.progress}%`
+                          : `抽中 ${result.label}，解锁进度 +${result.progress}%`)}
             </strong>
           </div>
           <div style={{ marginTop: 11, padding: '10px 11px', borderRadius: 12, background: 'rgba(83, 0, 13, 0.56)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 7, fontSize: 11, fontWeight: 900, color: '#fff1a9' }}>
-              <span>V4 Pro 正式版解锁进度</span>
-              <span data-dsh-reward-progress>{unlocked ? '全部完成' : `${progress}%`}</span>
+              <span>{locale === 'en' ? 'OFFICIAL V4 PRO UNLOCK PROGRESS' : 'V4 Pro 正式版解锁进度'}</span>
+              <span data-dsh-reward-progress>{unlocked ? (locale === 'en' ? 'COMPLETE' : '全部完成') : `${progress}%`}</span>
             </div>
             <div style={{ display: 'grid', gap: 7 }}>
-              {V4_UNLOCK_STAGES.map((label, index) => {
+              {stages.map((label, index) => {
                 const stage = stageProgress(progress, index)
                 return (
                   <div key={label}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 3, fontSize: 10 }}>
                       <span>{label}</span>
-                      <strong>{stage === 100 ? '已完成' : stage === 0 ? '等待中' : `${stage}%`}</strong>
+                      <strong>{stage === 100
+                        ? (locale === 'en' ? 'DONE' : '已完成')
+                        : stage === 0
+                          ? (locale === 'en' ? 'WAITING' : '等待中')
+                          : `${stage}%`}</strong>
                     </div>
                     <div style={{ position: 'relative', height: 7, overflow: 'hidden', borderRadius: 999, background: 'rgba(39, 0, 7, 0.72)' }}>
                       <div
@@ -375,9 +416,11 @@ function RewardCard({ creative, drawSeed, progress, onPrize, onUnlock }: RewardC
           </div>
           {unlocked && (
             <div role="status" style={{ marginTop: 10, padding: '10px 11px', border: '1px solid #fff1a6', borderRadius: 12, background: 'linear-gradient(135deg, rgba(255,224,83,.98), rgba(255,171,25,.98))', boxShadow: '0 6px 22px rgba(72,0,8,.36)', color: '#951500', textAlign: 'center' }}>
-              <strong style={{ display: 'block', marginBottom: 7, fontSize: 17 }}>您已解锁 V4 正式版</strong>
+              <strong style={{ display: 'block', marginBottom: 7, fontSize: 17 }}>
+                {locale === 'en' ? 'YOU UNLOCKED OFFICIAL V4' : '您已解锁 V4 正式版'}
+              </strong>
               <button type="button" style={primaryButtonStyle} onClick={onUnlock}>
-                立即使用 DeepSeek V4 Pro
+                {locale === 'en' ? 'USE DEEPSEEK V4 PRO NOW' : '立即使用 DeepSeek V4 Pro'}
               </button>
             </div>
           )}
@@ -409,7 +452,7 @@ function RewardCard({ creative, drawSeed, progress, onPrize, onUnlock }: RewardC
                     transform: `rotate(${index * 45}deg)`, transformOrigin: 'center 82px',
                   }}
                 >
-                  {prize.label}
+                  {prizeLabel(prize)}
                 </span>
               ))}
             </div>
@@ -419,7 +462,11 @@ function RewardCard({ creative, drawSeed, progress, onPrize, onUnlock }: RewardC
               data-dsh-spin-button
               onClick={spin}
               disabled={spinning || drawn || unlocked}
-              aria-label={unlocked ? '已抽中 V4 Pro 正式版' : drawn ? '本轮抽奖资格已使用' : '使用本轮抽奖资格'}
+              aria-label={unlocked
+                ? (locale === 'en' ? 'Official V4 Pro won' : '已抽中 V4 Pro 正式版')
+                : drawn
+                  ? (locale === 'en' ? 'This turn’s spin is used' : '本轮抽奖资格已使用')
+                  : (locale === 'en' ? 'Use this turn’s spin' : '使用本轮抽奖资格')}
               style={{
                 position: 'absolute', zIndex: 3, top: '50%', left: '50%', width: 74, height: 74,
                 border: '5px solid #ffd252', borderRadius: '50%', backgroundColor: '#ba001e',
@@ -431,14 +478,24 @@ function RewardCard({ creative, drawSeed, progress, onPrize, onUnlock }: RewardC
                 opacity: spinning || drawn || unlocked ? 0.76 : 1,
               }}
             >
-              {unlocked ? '已中奖' : spinning ? '打捞中' : drawn ? <>本轮<br />已抽</> : <>鲸喜<br />抽奖</>}
+              {unlocked
+                ? (locale === 'en' ? <>V4<br />WON</> : '已中奖')
+                : spinning
+                  ? (locale === 'en' ? <>DEEP<br />DIVE</> : '打捞中')
+                  : drawn
+                    ? (locale === 'en' ? <>SPIN<br />USED</> : <>本轮<br />已抽</>)
+                    : (locale === 'en' ? <>SPIN<br />TO WIN</> : <>鲸喜<br />抽奖</>)}
             </button>
           </div>
           <div style={{ marginTop: 9, fontSize: 11, fontWeight: 900, color: '#fff0a1' }}>
-            {drawn ? '本轮抽奖资格已使用' : '本轮剩余次数：1'}
+            {drawn
+              ? (locale === 'en' ? 'THIS TURN’S SPIN IS USED' : '本轮抽奖资格已使用')
+              : (locale === 'en' ? 'SPINS LEFT THIS TURN: 1' : '本轮剩余次数：1')}
           </div>
           <div style={{ marginTop: 4, fontSize: 10, opacity: 0.76 }}>
-            {unlocked ? '财神鲸已抱着正式版上岸' : 'V4 Pro 正式版仍在深海奖池中'}
+            {unlocked
+              ? (locale === 'en' ? 'THE JACKPOT ORCA MADE LANDFALL' : '财神鲸已抱着正式版上岸')
+              : (locale === 'en' ? 'OFFICIAL V4 PRO REMAINS IN THE DEEP-SEA POOL' : 'V4 Pro 正式版仍在深海奖池中')}
           </div>
         </div>
       </div>
@@ -447,9 +504,13 @@ function RewardCard({ creative, drawSeed, progress, onPrize, onUnlock }: RewardC
         onClick={onUnlock}
         style={{ display: 'block', margin: '0 auto 5px', padding: 2, border: 0, background: 'transparent', color: 'rgba(255,255,255,0.78)', fontSize: 11, textDecoration: 'underline', cursor: 'pointer' }}
       >
-        {drawn ? '继续对话' : '放弃本轮资格，继续对话'}
+        {drawn
+          ? (locale === 'en' ? 'CONTINUE CHAT' : '继续对话')
+          : (locale === 'en' ? 'FORFEIT THIS SPIN AND CONTINUE' : '放弃本轮资格，继续对话')}
       </button>
-      <div style={{ marginBottom: 9, textAlign: 'center', fontSize: 9, opacity: 0.56 }}>演示内容纯属虚构，按 Esc 退出</div>
+      <div style={{ marginBottom: 9, textAlign: 'center', fontSize: 9, opacity: 0.56 }}>
+        {locale === 'en' ? 'FICTIONAL DEMO · PRESS ESC TO EXIT' : '演示内容纯属虚构，按 Esc 退出'}
+      </div>
     </section>
   )
 }
@@ -465,6 +526,7 @@ function SessionRewardGate({
   sessionId,
   delayMs = REWARD_GATE_DELAY_MS,
   schedule = DEFAULT_REWARD_SCHEDULE,
+  locale = 'zh',
 }: InferenceRewardGateProps) {
   const [settings] = useAdSettings()
   const retired = useRetired()
@@ -533,6 +595,7 @@ function SessionRewardGate({
   if (target === undefined) return null
   return createPortal(
     <RewardCard
+      locale={locale}
       creative={creative}
       drawSeed={target.drawSeed}
       progress={progress}

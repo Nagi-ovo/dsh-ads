@@ -10,7 +10,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { AdSettingsMenu, type AdControlsProps } from './AdControls.tsx'
-import type { AdCreative } from './types.ts'
+import type { AdCreative, AdLocale } from './types.ts'
 import type { Anchor } from './persist.ts'
 import { useDrag } from './useDrag.ts'
 import { resolveHitbox } from './hitbox.ts'
@@ -30,6 +30,8 @@ const POSTER_CLOSE_PX = 18
 
 /** Props for the bottom-left poster. */
 export interface GamePosterProps {
+  /** Language used by the host UI. */
+  readonly locale?: AdLocale
   /** The artwork to show. */
   readonly creative: AdCreative
   /** Frozen randomness driving the decoy hitbox, in [0, 1). */
@@ -105,6 +107,7 @@ const gearButtonStyle: CSSProperties = {
  */
 export function GamePoster(props: GamePosterProps) {
   const { creative, seed, chime, anchor, onMove, collapsed, onToggleCollapse, onClose, onMisfire } = props
+  const locale = props.locale ?? 'zh'
   const [entered, setEntered] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const settingsRef = useRef<HTMLSpanElement | null>(null)
@@ -163,14 +166,14 @@ export function GamePoster(props: GamePosterProps) {
         style={{ ...chromeStyle, cursor: drag.dragging ? 'grabbing' : 'grab' }}
         onPointerDown={drag.onPointerDown}
       >
-        <span>★ 火爆开服 ★</span>
+        <span>{locale === 'en' ? '★ ACTUAL GAMEPLAY ★' : '★ 火爆开服 ★'}</span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <span style={{ position: 'relative', display: 'flex' }} ref={settingsRef}>
             <button
               type="button"
               style={gearButtonStyle}
-              aria-label="广告设置"
-              title="广告设置"
+              aria-label={locale === 'en' ? 'Ad settings' : '广告设置'}
+              title={locale === 'en' ? 'Ad settings' : '广告设置'}
               aria-expanded={settingsOpen}
               onPointerDown={(event) => event.stopPropagation()}
               onClick={() => setSettingsOpen((open) => !open)}
@@ -192,8 +195,12 @@ export function GamePoster(props: GamePosterProps) {
           <button
             type="button"
             style={chromeButtonStyle}
-            aria-label={collapsed ? '展开广告' : '收起广告'}
-            title={collapsed ? '展开' : '收起'}
+            aria-label={collapsed
+              ? (locale === 'en' ? 'Expand advertisement' : '展开广告')
+              : (locale === 'en' ? 'Collapse advertisement' : '收起广告')}
+            title={collapsed
+              ? (locale === 'en' ? 'Expand' : '展开')
+              : (locale === 'en' ? 'Collapse' : '收起')}
             onPointerDown={(event) => event.stopPropagation()}
             onClick={onToggleCollapse}
           >
@@ -216,7 +223,7 @@ export function GamePoster(props: GamePosterProps) {
             </span>
             <button
               type="button"
-              aria-label="关闭游戏广告"
+              aria-label={locale === 'en' ? 'Close game advertisement' : '关闭游戏广告'}
               onPointerDown={(event) => event.stopPropagation()}
               onClick={onClose}
               style={{

@@ -207,12 +207,9 @@ export function layout(ads: readonly PlacedAd[], viewport: Viewport, safe: SafeA
 /**
  * Lay one gutter column out top to bottom.
  *
- * Horizontal banners take the full column width. Skyscrapers are paired: two
- * of them side by side span exactly one column, which is both how a real
- * portal stacks its inventory and the only way a 1:4 banner fits at a readable
- * width. A skyscraper with no partner left in the queue takes the half-width
- * slot alone rather than stretching to a size where it would tower over the
- * whole gutter.
+ * Every banner takes the full column width when it fits. A skyscraper that is
+ * too tall for the remaining column is scaled down just enough to stay above
+ * the composer, then centred instead of being cropped or dropped.
  *
  * @param column - the banners assigned to this gutter, in spawn order.
  * @param side - which gutter.
@@ -229,7 +226,6 @@ function layoutColumn(
   const { left, width } = gutterMetrics(side, viewport, safe)
   if (width === 0) return []
   const floor = viewport.height - safe.bottom
-  const half = (width - GAP) / 2
   const height = (ad: PlacedAd, w: number) => w * (ad.creative.height / ad.creative.width)
   const queue = [...column]
   const out: LaidOut[] = []
@@ -244,13 +240,15 @@ function layoutColumn(
       top += h + GAP
       continue
     }
-    const partnerAt = queue.findIndex((a) => a.creative.shape === 'tall')
-    const partner = partnerAt < 0 ? undefined : queue.splice(partnerAt, 1)[0]
-    const rowHeight = Math.max(height(ad, half), partner === undefined ? 0 : height(partner, half))
-    if (top + rowHeight > floor) continue
-    out.push({ ad, box: { left, top, width: half } })
-    if (partner !== undefined) out.push({ ad: partner, box: { left: left + half + GAP, top, width: half } })
-    top += rowHeight + GAP
+    const availableHeight = floor - top
+    const fullHeight = height(ad, width)
+    const adWidth = fullHeight <= availableHeight
+      ? width
+      : Math.min(width, availableHeight * (ad.creative.width / ad.creative.height))
+    const adHeight = height(ad, adWidth)
+    if (adWidth <= 0 || adHeight <= 0) continue
+    out.push({ ad, box: { left: left + (width - adWidth) / 2, top, width: adWidth } })
+    top += adHeight + GAP
   }
   return out
 }

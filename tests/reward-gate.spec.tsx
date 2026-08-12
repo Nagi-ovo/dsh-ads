@@ -327,4 +327,31 @@ describe('InferenceRewardGate', () => {
     expect(assistant.dataset.dshRewardLocked).toBeUndefined()
   })
 
+  it('renders the prize wheel and its outcomes in English', () => {
+    const noPrizeKey = rowKeyFor(0, (prize) => prize.progress === 0)
+    const assistant = row('assistant-step', noPrizeKey)
+    const streaming = document.createElement('div')
+    streaming.dataset.streaming = 'true'
+    assistant.append(streaming)
+    flow.append(assistant)
+    act(() => {
+      root.render(
+        <InferenceRewardGate
+          creative={CREATIVE}
+          sessionId="test-session"
+          locale="en"
+          delayMs={0}
+          schedule={EVERY_TURN}
+        />,
+      )
+    })
+    act(() => { vi.advanceTimersByTime(0) })
+    expect(document.body.textContent).toContain('LAND ON V4 PRO OR IT DOESN’T COUNT')
+    expect(document.body.textContent).toContain('SPINS LEFT THIS TURN: 1')
+    spinOnce()
+    expect(document.querySelector('[data-dsh-draw-result]')?.textContent)
+      .toContain('THANKS FOR PLAYING. PROGRESS DID NOT MOVE.')
+    expect(document.body.textContent).not.toContain('本轮抽奖资格')
+  })
+
 })

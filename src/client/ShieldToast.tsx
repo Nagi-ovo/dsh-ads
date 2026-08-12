@@ -13,6 +13,7 @@
 
 import { useEffect, useState, type CSSProperties } from 'react'
 import { playChime } from './sound.ts'
+import type { AdLocale } from './types.ts'
 
 /** Rendered width of the report, in CSS pixels; matches the level-one alert. */
 const SHIELD_WIDTH = 340
@@ -22,6 +23,8 @@ const SHIELD_CLOSE_PX = 16
 
 /** Props for the protection report. */
 export interface ShieldToastProps {
+  /** Language used by the host UI. */
+  readonly locale?: AdLocale
   /** Whether to chime on arrival. */
   readonly chime: boolean
   /** Dismiss the report; every control here really does this. */
@@ -72,7 +75,7 @@ const okButtonStyle: CSSProperties = {
  * @param props - see {@link ShieldToastProps}.
  * @returns the fixed-position report window.
  */
-export function ShieldToast({ chime, onClose }: ShieldToastProps) {
+export function ShieldToast({ chime, onClose, locale = 'zh' }: ShieldToastProps) {
   const [entered, setEntered] = useState(false)
   useEffect(() => {
     if (chime) playChime()
@@ -95,10 +98,10 @@ export function ShieldToast({ chime, onClose }: ShieldToastProps) {
       }}
     >
       <div style={chromeStyle}>
-        <span>🛡 DSH 安全中心 · Star 尊享版</span>
+        <span>{locale === 'en' ? '🛡 DSH SECURITY · STAR PREMIUM' : '🛡 DSH 安全中心 · Star 尊享版'}</span>
         <button
           type="button"
-          aria-label="关闭防护通报"
+          aria-label={locale === 'en' ? 'Close protection report' : '关闭防护通报'}
           onClick={onClose}
           style={{
             width: SHIELD_CLOSE_PX,
@@ -119,22 +122,28 @@ export function ShieldToast({ chime, onClose }: ShieldToastProps) {
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
           <span aria-hidden="true" style={{ fontSize: 26, lineHeight: 1 }}>🛡️</span>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#1d7a2f' }}>已拦截 1 次高危攻击</div>
-            <div style={{ color: '#666' }}>尊贵的 Star 用户，防护已自动生效</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#1d7a2f' }}>
+              {locale === 'en' ? '1 CRITICAL ATTACK BLOCKED' : '已拦截 1 次高危攻击'}
+            </div>
+            <div style={{ color: '#666' }}>
+              {locale === 'en' ? 'Premium Star protection activated automatically' : '尊贵的 Star 用户，防护已自动生效'}
+            </div>
           </div>
         </div>
         <div style={{ margin: '10px 0 8px', padding: '8px 10px', background: '#fff', border: '1px solid #d8e4d8' }}>
           <div style={rowStyle}>
-            <span>病毒名</span>
+            <span>{locale === 'en' ? 'THREAT' : '病毒名'}</span>
             <strong>Gemini.Worm.Nano</strong>
           </div>
           <div style={rowStyle}>
-            <span>攻击目标</span>
-            <strong>您的会话</strong>
+            <span>{locale === 'en' ? 'TARGET' : '攻击目标'}</span>
+            <strong>{locale === 'en' ? 'Your session' : '您的会话'}</strong>
           </div>
           <div style={rowStyle}>
-            <span>处理结果</span>
-            <strong style={{ color: '#1d7a2f' }}>已自动清除，无需操作</strong>
+            <span>{locale === 'en' ? 'RESULT' : '处理结果'}</span>
+            <strong style={{ color: '#1d7a2f' }}>
+              {locale === 'en' ? 'REMOVED — NO ACTION NEEDED' : '已自动清除，无需操作'}
+            </strong>
           </div>
         </div>
         {/* A full green bar that never moves, same joke as the red one: the
@@ -143,7 +152,7 @@ export function ShieldToast({ chime, onClose }: ShieldToastProps) {
           <div style={{ width: '100%', height: '100%', background: 'linear-gradient(#4cb872, #1d7a2f)' }} />
         </div>
         <button type="button" style={okButtonStyle} onClick={onClose}>
-          知道了
+          {locale === 'en' ? 'GOT IT' : '知道了'}
         </button>
       </div>
     </div>

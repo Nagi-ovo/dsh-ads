@@ -11,6 +11,9 @@ importers:
       '@deepseek-ai/cordis':
         specifier: link:../test-Nagi-ovo/vendor/cordis
         version: link:../test-Nagi-ovo/vendor/cordis
+      '@deepseek-ai/dsh-client-locale':
+        specifier: link:../test-Nagi-ovo/packages/client/locale
+        version: link:../test-Nagi-ovo/packages/client/locale
       '@deepseek-ai/dsh-client-runtime':
         specifier: link:../test-Nagi-ovo/packages/client/runtime
         version: link:../test-Nagi-ovo/packages/client/runtime

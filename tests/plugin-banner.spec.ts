@@ -77,4 +77,19 @@ describe('pluginCreative', () => {
     expect(source).toContain('我自己写的标题')
     expect(source).toContain('快点我')
   })
+
+  it('keeps English sponsor banners free of untranslated registry prose', () => {
+    const source = svg(pluginCreative(PLAIN, 'wide', {}, 'en').src)
+    expect(source).not.toContain('生态情报')
+    expect(source).toContain('SPONSORED PLUGIN')
+    expect(source).toContain(PLAIN.slug)
+  })
+
+  it('draws an explicit English sponsored-plugin skyscraper', () => {
+    const creative = pluginCreative(PLAIN, 'tall', {}, 'en')
+    const source = svg(creative.src)
+    expect(creative.alt).toMatch(/^Sponsored plugin:/)
+    expect(source).toContain('SPONSORED PLUGIN')
+    expect(source).toContain('ADVERTISEMENT · UNAFFILIATED PARODY')
+  })
 })

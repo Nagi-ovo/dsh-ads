@@ -15,6 +15,8 @@
 import { useMemo } from 'react'
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+// Type-only: pulls the locale service's Context merge (ctx.locale).
+import type {} from '@deepseek-ai/dsh-client-locale/client'
 // Type-only: pulls the `conversation.input.dock` and `conversation.chat.turnTail`
 // SlotMap declarations.
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
@@ -24,15 +26,18 @@ import { AdLayer } from './AdLayer.tsx'
 import { AdsSection } from './AdsSection.tsx'
 import { InferenceRewardGate } from './InferenceRewardGate.tsx'
 import { InlineAd, turnCarriesAd } from './InlineAd.tsx'
-import { BUILTIN_ADS, BUILTIN_POPUPS, BUILTIN_POSTERS, BUILTIN_REWARDS } from './builtin-ads.ts'
+import {
+  BUILTIN_ADS_BY_LOCALE, BUILTIN_POPUPS_BY_LOCALE, BUILTIN_POSTERS_BY_LOCALE, BUILTIN_REWARDS_BY_LOCALE,
+} from './builtin-ads.ts'
 import { useSponsoredAds } from './registry.ts'
 import { DEFAULT_SPAWN } from './schedule.ts'
 import { DEFAULT_HITBOX_PX } from './hitbox.ts'
-import type { AdCreative } from './types.ts'
+import { adLocale } from './locale.ts'
+import type { AdCreative, AdLocale } from './types.ts'
 
 export const name = 'dsh-ads'
 
-export const inject = ['slots']
+export const inject = ['slots', 'locale']
 
 /** Delay before the corner pop-up first appears, in ms. */
 const DEFAULT_POPUP_FIRST_DELAY_MS = 10_000
@@ -60,14 +65,11 @@ const DEFAULT_SCARE_DELAY_MS = 4_000
  * Resolve the reward creative and fail at module load when the asset build omitted it.
  * @returns the shipped God-of-Wealth whale artwork.
  */
-function rewardCreative(): AdCreative {
-  const creative = BUILTIN_REWARDS[0]
+function rewardCreative(locale: AdLocale): AdCreative {
+  const creative = BUILTIN_REWARDS_BY_LOCALE[locale][0]
   if (creative === undefined) throw new Error('dsh-ads has no inference reward creative')
   return creative
 }
-
-/** The one model-component reward creative shipped with the client. */
-const REWARD_CREATIVE = rewardCreative()
 
 /**
  * Dock entry: zero inline footprint, all output goes through the portal.
@@ -80,15 +82,17 @@ const REWARD_CREATIVE = rewardCreative()
  * @param props - the dock's session-scoped standard kit.
  * @returns the portalled ad layer.
  */
-function AdDockEntry({ sessionId }: PropsRuntime<'conversation.input.dock'>) {
-  const sponsored = useSponsoredAds(sessionId)
-  const creatives = useMemo(() => [...BUILTIN_ADS, ...sponsored], [sponsored])
+function AdDockEntry({ sessionId, locale }: PropsRuntime<'conversation.input.dock'> & { readonly locale: AdLocale }) {
+  const sponsored = useSponsoredAds(sessionId, locale)
+  const builtins = BUILTIN_ADS_BY_LOCALE[locale]
+  const creatives = useMemo(() => [...builtins, ...sponsored], [builtins, sponsored])
   return (
     <>
       <AdLayer
         creatives={creatives}
-        popups={BUILTIN_POPUPS}
-        posters={BUILTIN_POSTERS}
+        popups={BUILTIN_POPUPS_BY_LOCALE[locale]}
+        posters={BUILTIN_POSTERS_BY_LOCALE[locale]}
+        locale={locale}
         spawn={DEFAULT_SPAWN}
         hitboxPx={DEFAULT_HITBOX_PX}
         popupFirstDelayMs={DEFAULT_POPUP_FIRST_DELAY_MS}
@@ -99,7 +103,7 @@ function AdDockEntry({ sessionId }: PropsRuntime<'conversation.input.dock'>) {
         scareHref={SCARE_HREF}
         chime
       />
-      <InferenceRewardGate creative={REWARD_CREATIVE} sessionId={sessionId} />
+      <InferenceRewardGate creative={rewardCreative(locale)} sessionId={sessionId} locale={locale} />
     </>
   )
 }
@@ -130,8 +134,9 @@ function selectInlineAd(owner: { seq: number }): number | undefined {
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
+  const locale = (): AdLocale => adLocale(ctx.locale.getSnapshot().active)
   ctx.slots.inject('conversation.input.dock', () => ctx.slots.register(
-    { name: 'conversation.input.dock', id: 'dsh-ads-layer', order: 90 },
+    { name: 'conversation.input.dock', id: 'dsh-ads-layer', order: 90, inject: () => ({ locale: locale() }) },
     AdDockEntry,
   ))
   // A page of its own in the host's settings dialog, beside 通用设置 and 模型.
@@ -141,7 +146,13 @@ export function apply(ctx: ClientContext): void {
     // Labelled as third-party in the nav itself: this page sits between two
     // first-party ones, and a settings entry that reads as official is the one
     // place this plugin's joke would stop being obviously a joke.
-    { name: 'settings.section', id: 'dsh-ads', order: 90, label: () => '广告（非官方）' },
+    {
+      name: 'settings.section',
+      id: 'dsh-ads',
+      order: 90,
+      label: () => locale() === 'en' ? 'Ads (Unofficial)' : '广告（非官方）',
+      inject: () => ({ locale: locale() }),
+    },
     AdsSection,
   ))
   ctx.slots.inject('conversation.chat.turnTail', () => ctx.slots.register(
@@ -149,7 +160,7 @@ export function apply(ctx: ClientContext): void {
       name: 'conversation.chat.turnTail',
       priority: 1000,
       select: selectInlineAd,
-      inject: () => ({ pool: BUILTIN_ADS }),
+      inject: () => ({ pool: BUILTIN_ADS_BY_LOCALE[locale()], locale: locale() }),
     },
     InlineAd,
   ))

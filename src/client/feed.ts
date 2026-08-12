@@ -25,7 +25,7 @@ import type { SponsoredPlugin } from '../protocol.ts'
 import { pluginCreative } from './plugin-banner.ts'
 import { readLedger, recordSeen, rotate, writeLedger } from './rotation.ts'
 import { hashString } from './stable-hash.ts'
-import type { AdCreative } from './types.ts'
+import type { AdCreative, AdLocale } from './types.ts'
 
 /** Every eligible plugin, as published by the registry fetch. */
 let plugins: readonly SponsoredPlugin[] = []
@@ -73,8 +73,8 @@ function houseCandidates(builtins: readonly AdCreative[]): readonly Candidate[] 
 }
 
 /** The hub as candidates. Drawing is deferred; there are well over a hundred. */
-function hubCandidates(): readonly Candidate[] {
-  return plugins.map((plugin) => ({ slug: plugin.slug, draw: () => pluginCreative(plugin, 'wide') }))
+function hubCandidates(locale: AdLocale): readonly Candidate[] {
+  return plugins.map((plugin) => ({ slug: plugin.slug, draw: () => pluginCreative(plugin, 'wide', {}, locale) }))
 }
 
 /**
@@ -89,13 +89,15 @@ function hubCandidates(): readonly Candidate[] {
  *
  * @param key - stable turn identity, `<session>:<seq>`.
  * @param builtins - the shipped banner pool.
+ * @param locale - language used for dynamic plugin artwork and assignment identity.
  * @returns the creative for this turn, or undefined when nothing is eligible.
  */
-export function feedAd(key: string, builtins: readonly AdCreative[]): AdCreative | undefined {
-  const already = assigned.get(key)
+export function feedAd(key: string, builtins: readonly AdCreative[], locale: AdLocale = 'zh'): AdCreative | undefined {
+  const assignmentKey = `${locale}:${key}`
+  const already = assigned.get(assignmentKey)
   if (already !== undefined) return already
   const house = houseCandidates(builtins)
-  const hub = hubCandidates()
+  const hub = hubCandidates(locale)
   const wantsHouse = hashString(key) % 2 === 0
   // Either half standing empty — no hub yet, or a host shipping no artwork —
   // hands its slots to the other rather than leaving the turn blank.
@@ -108,7 +110,7 @@ export function feedAd(key: string, builtins: readonly AdCreative[]): AdCreative
   if (chosen === undefined) return undefined
   writeLedger(recordSeen(readLedger(), [chosen]))
   const creative = chosen.draw()
-  assigned.set(key, creative)
+  assigned.set(assignmentKey, creative)
   return creative
 }
 
