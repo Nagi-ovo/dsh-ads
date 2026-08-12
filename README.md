@@ -9,7 +9,7 @@
   侧栏、对话、推理中途、右下角弹窗，一个都不放过。
 </p>
 
-![English 模式下的 Imagegen 虎鲸插件广告、假杀毒广告、假游戏和消息中心](assets/english-mode.png)
+![中文模式实机：两侧广告栏、对话内插件推荐、贪玩蓝鲸和 DSH 消息中心](assets/screenshot.webp)
 
 ## 能有多离谱
 
@@ -18,17 +18,25 @@
 - **这次一定能抽到 V4 Pro。** 戴财神帽的虎鲸掌管转盘，奖品包括 Attention Head、KV Cache、MoE 专家，以及永恒的「谢谢参与」。
 - **广告是假的，插件是真的。** `dsh-external` 社区插件会随机进入广告位，点击直接打开真实仓库。
 
-## 两套互联网垃圾美学
+## 中文、English，两套互联网垃圾美学
 
-切换 DSH 的「设置 → 语言」，整套素材和 UI 文案会即时更换。中文模式负责财神鲸和 V4 Pro，English 模式负责 fake antivirus、one weird trick 和永远选错门的假游戏。
+切换 DSH 的「设置 → 语言」，素材、文案和交互会整套更换。不是给中文广告生硬套一层翻译。
+
+### 中文模式：财神鲸抽 V4 Pro
+
+![流式回答中插入的 V4 Pro 正式版抽奖广告：财神鲸、每轮一抽的转盘与四道解锁进度条](assets/reward-gate.png)
+
+### English mode: fake antivirus, weird tricks, actual gameplay*
+
+![English 模式实机：Imagegen 虎鲸插件广告、假杀毒广告、假游戏和消息中心](assets/english-mode.png)
 
 <table>
   <tr>
-    <th>中文模式：财神鲸抽 V4 Pro</th>
-    <th>English mode: actual gameplay*</th>
+    <th>中文：贪玩蓝鲸（GIF）</th>
+    <th>English: actual gameplay*</th>
   </tr>
   <tr>
-    <td><img src="assets/reward-gate.png" alt="中文模式下的 V4 Pro 财神鲸转盘"></td>
+    <td><img src="assets/poster-blue-whale-small.gif" alt="贪玩蓝鲸假游戏动画"></td>
     <td><img src="assets/en/posters/poster-fail-game.webp" alt="English mode fake gameplay ad"></td>
   </tr>
 </table>
@@ -46,13 +54,25 @@ pnpm dsh plugin --profile web add link:/path/to/dsh-ads
 # 重启 dsh web，刷新页面
 ```
 
-所有广告位都能在「设置 → 广告（非官方）」里单独关闭。选择会保留到下次启动。
+所有广告位都能在「设置 → 广告（非官方）」里单独关闭，选择会保留到下次启动。
+
+![DSH 设置面板里的广告开关](assets/settings.webp)
 
 ## 免费广告位，真的
 
 `dsh-external` 里最近两周更新过的插件会自动进入轮播。对话信息流优先展示没出现过的插件，曝光记录只留在本机浏览器里。
 
 想换成自己的文案或图片？看 [投稿说明](contrib/README.md)，发个 PR 就行。
+
+## 顺便打个广告（这次是真的）
+
+同一个作者的 [dsh-visualize](https://github.com/dsh-external/dsh-visualize)：模型直接把可交互界面画进对话流。这条是全 README 唯一没编的。
+
+<div align="center">
+
+https://github.com/user-attachments/assets/93ff08ef-cf32-4a87-bf63-274c1a0a71e2
+
+</div>
 
 <details>
 <summary>免责声明</summary>
