@@ -25,6 +25,7 @@ import Gamepad2 from 'lucide-react/dist/esm/icons/gamepad-2.mjs'
 import Gauge from 'lucide-react/dist/esm/icons/gauge.mjs'
 import Newspaper from 'lucide-react/dist/esm/icons/newspaper.mjs'
 import PanelsLeftRight from 'lucide-react/dist/esm/icons/panels-left-right.mjs'
+import BadgeCent from 'lucide-react/dist/esm/icons/badge-cent.mjs'
 import ShieldAlert from 'lucide-react/dist/esm/icons/shield-alert.mjs'
 import Volume2 from 'lucide-react/dist/esm/icons/volume-2.mjs'
 import { retireAds, useRetired } from './retire.ts'
@@ -42,6 +43,7 @@ import { PLACEMENTS, useAdSettings, type AdSettings } from './settings.ts'
 const ICONS: Readonly<Record<string, ReactNode>> = {
   gutter: <PanelsLeftRight size={17} />,
   feed: <Newspaper size={17} />,
+  reward: <BadgeCent size={17} />,
   popup: <BellRing size={17} />,
   speed: <Gauge size={17} />,
   scare: <ShieldAlert size={17} />,
@@ -52,6 +54,7 @@ const ICONS: Readonly<Record<string, ReactNode>> = {
 const BLURBS: Readonly<Record<string, string>> = {
   gutter: '正文左右两侧的广告栏',
   feed: '对话里每隔几轮插入的插件推荐，是唯一能点进仓库的广告',
+  reward: '推理继续在后台跑，广告看完前暂时藏起后续文字和工具调用',
   popup: '右下角滑出的图片弹窗',
   speed: '启动时报告本次加载耗时，并给你一个编造的全国排名',
   scare: '假的病毒告警，点「暂不处理」会变本加厉',

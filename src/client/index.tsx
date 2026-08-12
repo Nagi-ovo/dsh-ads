@@ -1,10 +1,10 @@
 /**
- * dsh-ads, browser half. Two registrations, deliberately different in kind:
+ * dsh-ads, browser half. Three registrations, deliberately different in kind:
  *
- * - The composer's input dock mounts the floating layer. That entry renders
- *   nothing inline — it is only a slot with a React lifecycle scoped to an
- *   open session, which is exactly the lifetime the layer should have — and
- *   everything visible is portalled onto `document.body`.
+ * - The composer's input dock mounts the floating layer and inference reward
+ *   gate. That entry renders nothing at the dock — it only supplies a React
+ *   lifecycle scoped to an open session. Visible output is portalled onto
+ *   `document.body` or beside the active transcript row.
  * - The chat view's turn-tail chain mounts the feed ad *inside* the
  *   transcript, so the reading column carries inventory without anything
  *   floating over it.
@@ -22,11 +22,13 @@ import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import { AdLayer } from './AdLayer.tsx'
 import { AdsSection } from './AdsSection.tsx'
+import { InferenceRewardGate } from './InferenceRewardGate.tsx'
 import { InlineAd, turnCarriesAd } from './InlineAd.tsx'
-import { BUILTIN_ADS, BUILTIN_POPUPS, BUILTIN_POSTERS } from './builtin-ads.ts'
+import { BUILTIN_ADS, BUILTIN_POPUPS, BUILTIN_POSTERS, BUILTIN_REWARDS } from './builtin-ads.ts'
 import { useSponsoredAds } from './registry.ts'
 import { DEFAULT_SPAWN } from './schedule.ts'
 import { DEFAULT_HITBOX_PX } from './hitbox.ts'
+import type { AdCreative } from './types.ts'
 
 export const name = 'dsh-ads'
 
@@ -55,6 +57,19 @@ const SCARE_HREF = 'https://github.com/dsh-external/dsh-ads'
 const DEFAULT_SCARE_DELAY_MS = 4_000
 
 /**
+ * Resolve the reward creative and fail at module load when the asset build omitted it.
+ * @returns the shipped cash-reward artwork.
+ */
+function rewardCreative(): AdCreative {
+  const creative = BUILTIN_REWARDS[0]
+  if (creative === undefined) throw new Error('dsh-ads has no inference reward creative')
+  return creative
+}
+
+/** The one cash-reward creative shipped with the client. */
+const REWARD_CREATIVE = rewardCreative()
+
+/**
  * Dock entry: zero inline footprint, all output goes through the portal.
  *
  * The session id is what makes the dynamic tier rotate per conversation —
@@ -69,20 +84,23 @@ function AdDockEntry({ sessionId }: PropsRuntime<'conversation.input.dock'>) {
   const sponsored = useSponsoredAds(sessionId)
   const creatives = useMemo(() => [...BUILTIN_ADS, ...sponsored], [sponsored])
   return (
-    <AdLayer
-      creatives={creatives}
-      popups={BUILTIN_POPUPS}
-      posters={BUILTIN_POSTERS}
-      spawn={DEFAULT_SPAWN}
-      hitboxPx={DEFAULT_HITBOX_PX}
-      popupFirstDelayMs={DEFAULT_POPUP_FIRST_DELAY_MS}
-      posterFirstDelayMs={DEFAULT_POSTER_FIRST_DELAY_MS}
-      respawnMs={DEFAULT_RESPAWN_MS}
-      speedFirstDelayMs={DEFAULT_SPEED_FIRST_DELAY_MS}
-      scareDelayMs={DEFAULT_SCARE_DELAY_MS}
-      scareHref={SCARE_HREF}
-      chime
-    />
+    <>
+      <AdLayer
+        creatives={creatives}
+        popups={BUILTIN_POPUPS}
+        posters={BUILTIN_POSTERS}
+        spawn={DEFAULT_SPAWN}
+        hitboxPx={DEFAULT_HITBOX_PX}
+        popupFirstDelayMs={DEFAULT_POPUP_FIRST_DELAY_MS}
+        posterFirstDelayMs={DEFAULT_POSTER_FIRST_DELAY_MS}
+        respawnMs={DEFAULT_RESPAWN_MS}
+        speedFirstDelayMs={DEFAULT_SPEED_FIRST_DELAY_MS}
+        scareDelayMs={DEFAULT_SCARE_DELAY_MS}
+        scareHref={SCARE_HREF}
+        chime
+      />
+      <InferenceRewardGate creative={REWARD_CREATIVE} />
+    </>
   )
 }
 

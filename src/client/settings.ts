@@ -22,6 +22,8 @@ export interface AdSettings {
   readonly gutter: boolean
   /** Ads inside the transcript, between turns. */
   readonly feed: boolean
+  /** Rewarded ad that temporarily conceals the live transcript tail. */
+  readonly reward: boolean
   /** The bottom-right image pop-up. */
   readonly popup: boolean
   /** The startup benchmark window. */
@@ -38,6 +40,7 @@ export interface AdSettings {
 export const DEFAULT_SETTINGS: AdSettings = {
   gutter: true,
   feed: true,
+  reward: true,
   popup: true,
   speed: true,
   scare: true,
@@ -65,6 +68,7 @@ export interface PlacementRow {
 export const PLACEMENTS: readonly PlacementRow[] = [
   { key: 'gutter', icon: '🧱', label: '两侧广告栏' },
   { key: 'feed', icon: '📰', label: '对话里的推荐' },
+  { key: 'reward', icon: '🪙', label: '推理激励广告' },
   { key: 'popup', icon: '🔔', label: '右下角弹窗' },
   { key: 'speed', icon: '🚀', label: '跑分中心' },
   { key: 'scare', icon: '☣️', label: '安全中心' },

@@ -16,7 +16,16 @@ describe('isSolo', () => {
   })
 
   it('is false when even the poster is off', () => {
-    const nothing = { ...DEFAULT_SETTINGS, gutter: false, feed: false, popup: false, speed: false, scare: false, poster: false }
+    const nothing = {
+      ...DEFAULT_SETTINGS,
+      gutter: false,
+      feed: false,
+      reward: false,
+      popup: false,
+      speed: false,
+      scare: false,
+      poster: false,
+    }
     expect(isSolo(nothing)).toBe(false)
   })
 
