@@ -12,7 +12,7 @@
  */
 import { readFile, writeFile, readdir } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
-import { dirname, join } from 'node:path'
+import { dirname, extname, join } from 'node:path'
 import { execFileSync } from 'node:child_process'
 
 const here = dirname(fileURLToPath(import.meta.url))
@@ -49,6 +49,12 @@ const REWARD_META = {
   'reward-whale': { alt: '戴财神帽的蓝黑虎鲸抱着权重碎片和模型组件' },
 }
 
+/** Supported source artwork MIME types, preserving lossless originals when supplied. */
+const IMAGE_MIME = {
+  '.png': 'image/png',
+  '.webp': 'image/webp',
+}
+
 /**
  * Read one artwork directory into serialisable creative records.
  * @param dir - directory name under `assets/`.
@@ -59,10 +65,11 @@ const REWARD_META = {
 async function collect(dir, meta, extra) {
   const abs = join(here, '..', 'assets', dir)
   const present = await readdir(abs)
-  const files = present.filter((f) => f.endsWith('.webp')).sort()
+  const files = present.filter((file) => IMAGE_MIME[extname(file)] !== undefined).sort()
   const out = []
   for (const file of files) {
-    const id = file.replace(/\.webp$/, '')
+    const extension = extname(file)
+    const id = file.slice(0, -extension.length)
     const entry = meta[id]
     if (entry === undefined) throw new Error(`assets/${dir}/${file} has no metadata entry in scripts/build-assets.mjs`)
     // `[0]` pins the first frame: an animated webp otherwise reports one
@@ -70,7 +77,7 @@ async function collect(dir, meta, extra) {
     const geom = execFileSync('magick', ['identify', '-format', '%w %h', `${join(abs, file)}[0]`], { encoding: 'utf8' })
     const [width, height] = geom.trim().split(' ').map(Number)
     const b64 = (await readFile(join(abs, file))).toString('base64')
-    const record = { id, width, height, ...extra, ...entry, src: `data:image/webp;base64,${b64}` }
+    const record = { id, width, height, ...extra, ...entry, src: `data:${IMAGE_MIME[extension]};base64,${b64}` }
     // An `<id>.mp4` beside the still becomes the takeover's video.
     if (present.includes(`${id}.mp4`)) {
       record.video = `data:video/mp4;base64,${(await readFile(join(abs, `${id}.mp4`))).toString('base64')}`

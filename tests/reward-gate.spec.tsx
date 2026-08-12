@@ -242,6 +242,21 @@ describe('InferenceRewardGate', () => {
     expect(document.querySelector('[data-dsh-draw-result]')?.textContent).not.toContain('正在打捞')
   })
 
+  it('caps the desktop progress column so the whale artwork remains visible', () => {
+    const assistant = row('assistant-step', 'assistant-layout')
+    const streaming = document.createElement('div')
+    streaming.dataset.streaming = 'true'
+    assistant.append(streaming)
+    flow.append(assistant)
+    act(() => {
+      root.render(<InferenceRewardGate creative={CREATIVE} sessionId="test-session" delayMs={0} schedule={EVERY_TURN} />)
+    })
+    act(() => { vi.advanceTimersByTime(0) })
+    const styles = document.querySelector('style')?.textContent
+    expect(styles).toContain('grid-template-columns: minmax(0, 460px) 230px')
+    expect(styles).toContain('justify-content: space-between')
+  })
+
   it('uses a stable sparse schedule with cooldown and a pity offer', () => {
     expect(rewardTurnEligible('session', 'turn-1', 1, 0)).toBe(false)
     expect(rewardTurnEligible('session', 'turn-2', 2, 0)).toBe(false)

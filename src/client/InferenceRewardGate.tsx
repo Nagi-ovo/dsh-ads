@@ -277,9 +277,10 @@ function RewardCard({ creative, drawSeed, progress, onPrize, onUnlock }: RewardC
       <style>{`
         .dsh-reward-layout {
           display: grid;
-          grid-template-columns: minmax(270px, 1fr) 230px;
+          grid-template-columns: minmax(0, 460px) 230px;
           gap: 18px;
           align-items: center;
+          justify-content: space-between;
           padding: 22px 20px 18px;
         }
         .dsh-prize-wheel {
