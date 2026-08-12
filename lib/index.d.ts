@@ -3,7 +3,7 @@ import { IncomingMessage, ServerResponse } from "node:http";
 /** The slice of the host context this plugin uses. */
 interface HostContext {
   /** The web shell's HTTP server; the only host capability the ad layer needs. */
-  httpServer: {
+  webServer: {
     /**
      * Publish a route.
      * @param route - the path to claim and the handler to serve it.

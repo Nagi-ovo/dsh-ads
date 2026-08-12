@@ -23,7 +23,7 @@ import { checkHostStarred } from './star-host.ts'
 /** The slice of the host context this plugin uses. */
 interface HostContext {
   /** The web shell's HTTP server; the only host capability the ad layer needs. */
-  httpServer: {
+  webServer: {
     /**
      * Publish a route.
      * @param route - the path to claim and the handler to serve it.
@@ -43,7 +43,7 @@ interface HostContext {
 }
 
 /** Host capabilities required for the dynamic tier. */
-export const inject = ['httpServer']
+export const inject = ['webServer']
 
 /** Plugin configuration. */
 export interface Config {
@@ -115,7 +115,7 @@ export function apply(ctx: HostContext, config: Config = {}): void {
     return await inflight
   }
 
-  ctx.effect(() => ctx.httpServer.register({
+  ctx.effect(() => ctx.webServer.register({
     kind: 'exact',
     path: REGISTRY_ROUTE,
     handler: async (_req, res) => { json(res, await resolve()) },
@@ -137,7 +137,7 @@ export function apply(ctx: HostContext, config: Config = {}): void {
     return await starInflight
   }
 
-  ctx.effect(() => ctx.httpServer.register({
+  ctx.effect(() => ctx.webServer.register({
     kind: 'exact',
     path: STAR_ROUTE,
     handler: async (_req, res) => { json(res, await resolveStar()) },
