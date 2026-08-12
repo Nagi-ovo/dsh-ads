@@ -14,9 +14,9 @@
 
 import { useMemo } from 'react'
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
-import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { HostObservable, InjectFace, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: pulls the locale service's Context merge (ctx.locale).
-import type {} from '@deepseek-ai/dsh-client-locale/client'
+import type { LocaleSnapshot } from '@deepseek-ai/dsh-client-locale/client'
 // Type-only: pulls the `conversation.input.dock` and `conversation.chat.turnTail`
 // SlotMap declarations.
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
@@ -38,6 +38,9 @@ import type { AdCreative, AdLocale } from './types.ts'
 export const name = 'dsh-ads'
 
 export const inject = ['slots', 'locale']
+
+/** Observable locale seat injected into every mounted advertisement entry. */
+type LocaleInjected = InjectFace<{ readonly hooks: { readonly locale: HostObservable<LocaleSnapshot> } }>
 
 /** Delay before the corner pop-up first appears, in ms. */
 const DEFAULT_POPUP_FIRST_DELAY_MS = 10_000
@@ -82,7 +85,8 @@ function rewardCreative(locale: AdLocale): AdCreative {
  * @param props - the dock's session-scoped standard kit.
  * @returns the portalled ad layer.
  */
-function AdDockEntry({ sessionId, locale }: PropsRuntime<'conversation.input.dock'> & { readonly locale: AdLocale }) {
+function AdDockEntry({ sessionId, useLocale }: PropsRuntime<'conversation.input.dock'> & LocaleInjected) {
+  const locale = useLocale(snapshot => adLocale(snapshot.active))
   const sponsored = useSponsoredAds(sessionId, locale)
   const builtins = BUILTIN_ADS_BY_LOCALE[locale]
   const creatives = useMemo(() => [...builtins, ...sponsored], [builtins, sponsored])
@@ -106,6 +110,25 @@ function AdDockEntry({ sessionId, locale }: PropsRuntime<'conversation.input.doc
       <InferenceRewardGate creative={rewardCreative(locale)} sessionId={sessionId} locale={locale} />
     </>
   )
+}
+
+/**
+ * Settings entry that follows the host locale observable.
+ * @param props - settings owner props plus the injected locale selector.
+ * @returns localized settings content.
+ */
+function AdsSectionEntry({ useLocale }: PropsRuntime<'settings.section'> & LocaleInjected) {
+  return <AdsSection locale={useLocale(snapshot => adLocale(snapshot.active))} />
+}
+
+/**
+ * Transcript entry that resolves its creative pool from the current locale.
+ * @param props - turn owner props plus the injected locale selector.
+ * @returns localized in-transcript advertisement.
+ */
+function InlineAdEntry({ useLocale, ...props }: PropsRuntime<'conversation.chat.turnTail'> & LocaleInjected) {
+  const locale = useLocale(snapshot => adLocale(snapshot.active))
+  return <InlineAd {...props} pool={BUILTIN_ADS_BY_LOCALE[locale]} locale={locale} />
 }
 
 /**
@@ -136,7 +159,7 @@ function selectInlineAd(owner: { seq: number }): number | undefined {
 export function apply(ctx: ClientContext): void {
   const locale = (): AdLocale => adLocale(ctx.locale.getSnapshot().active)
   ctx.slots.inject('conversation.input.dock', () => ctx.slots.register(
-    { name: 'conversation.input.dock', id: 'dsh-ads-layer', order: 90, inject: () => ({ locale: locale() }) },
+    { name: 'conversation.input.dock', id: 'dsh-ads-layer', order: 90, inject: () => ({ hooks: { locale: ctx.locale } }) },
     AdDockEntry,
   ))
   // A page of its own in the host's settings dialog, beside 通用设置 and 模型.
@@ -151,17 +174,17 @@ export function apply(ctx: ClientContext): void {
       id: 'dsh-ads',
       order: 90,
       label: () => locale() === 'en' ? 'Ads (Unofficial)' : '广告（非官方）',
-      inject: () => ({ locale: locale() }),
+      inject: () => ({ hooks: { locale: ctx.locale } }),
     },
-    AdsSection,
+    AdsSectionEntry,
   ))
   ctx.slots.inject('conversation.chat.turnTail', () => ctx.slots.register(
     {
       name: 'conversation.chat.turnTail',
       priority: 1000,
       select: selectInlineAd,
-      inject: () => ({ pool: BUILTIN_ADS_BY_LOCALE[locale()], locale: locale() }),
+      inject: () => ({ hooks: { locale: ctx.locale } }),
     },
-    InlineAd,
+    InlineAdEntry,
   ))
 }

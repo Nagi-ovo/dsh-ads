@@ -25,7 +25,7 @@
 
 ## Chinese and English, two distinct flavors of internet trash
 
-Change Settings → Language and the artwork, copy, and interactions switch as a complete campaign. This is not the Chinese campaign with translated labels pasted over it.
+Change Settings → Language and the current page hot-swaps the artwork, copy, and interactions as a complete campaign without a reload. This is not the Chinese campaign with translated labels pasted over it.
 
 ### Chinese mode: spin for V4 Pro
 
