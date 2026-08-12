@@ -49,13 +49,14 @@
 
 ```sh
 git clone https://github.com/dsh-external/dsh-ads.git
-dsh plugin --profile web add link:/path/to/dsh-ads
+cd /path/to/deepseek-harness
+pnpm dsh plugin --profile web add link:/path/to/dsh-ads
 # 重启 dsh web，刷新页面
 ```
 
 配置行由 bundle patch 自动插入，无需手动编辑 cordis.patch.yml。
 
-装了社区 [plugin-registry](https://github.com/dsh-external/plugin-registry) 的用户也可以走它的通道（与上面的官方通道二选一）：设置页「插件」面板安装，或 `dsh registry install /path/to/dsh-ads`。
+装了社区 [plugin-registry](https://github.com/dsh-external/plugin-registry) 的用户也可以在设置页「插件」面板安装；最新 DSH 已移除旧的 `dsh registry` 命令。
 
 换素材：图放进 `assets/ads`（侧栏）、`assets/popups`（右下角）或 `assets/posters`（左下角），在 `scripts/build-assets.mjs` 里补一行文案，跑 `pnpm run assets` 重新内联。webp 动图直接能用。在 `assets/posters` 里放一个同名 `.mp4`，点开广告时就播它。改源码后跑 `pnpm run check`。
 

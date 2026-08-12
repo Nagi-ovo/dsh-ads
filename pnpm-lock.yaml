@@ -8,21 +8,27 @@ importers:
 
   .:
     devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: link:../test-Nagi-ovo/vendor/cordis
+        version: link:../test-Nagi-ovo/vendor/cordis
       '@deepseek-ai/dsh-client-runtime':
-        specifier: link:../../.dsh/source/current/packages/client/runtime
-        version: link:../../.dsh/source/current/packages/client/runtime
+        specifier: link:../test-Nagi-ovo/packages/client/runtime
+        version: link:../test-Nagi-ovo/packages/client/runtime
       '@deepseek-ai/dsh-client-ui-conversation':
-        specifier: link:../../.dsh/source/current/packages/client/ui-conversation
-        version: link:../../.dsh/source/current/packages/client/ui-conversation
+        specifier: link:../test-Nagi-ovo/packages/client/ui-conversation
+        version: link:../test-Nagi-ovo/packages/client/ui-conversation
       '@deepseek-ai/dsh-client-ui-primitives':
-        specifier: link:../../.dsh/source/current/packages/client/ui-primitives
-        version: link:../../.dsh/source/current/packages/client/ui-primitives
+        specifier: link:../test-Nagi-ovo/packages/client/ui-primitives
+        version: link:../test-Nagi-ovo/packages/client/ui-primitives
       '@deepseek-ai/dsh-client-ui-settings':
-        specifier: link:../../.dsh/source/current/packages/client/ui-settings
-        version: link:../../.dsh/source/current/packages/client/ui-settings
+        specifier: link:../test-Nagi-ovo/packages/client/ui-settings
+        version: link:../test-Nagi-ovo/packages/client/ui-settings
       '@deepseek-ai/dsh-client-ui-slots':
-        specifier: link:../../.dsh/source/current/packages/client/ui-slots
-        version: link:../../.dsh/source/current/packages/client/ui-slots
+        specifier: link:../test-Nagi-ovo/packages/client/ui-slots
+        version: link:../test-Nagi-ovo/packages/client/ui-slots
+      '@deepseek-ai/schemastery':
+        specifier: link:../test-Nagi-ovo/vendor/schemastery
+        version: link:../test-Nagi-ovo/vendor/schemastery
       '@types/node':
         specifier: ^22.0.0
         version: 22.20.1
@@ -32,9 +38,6 @@ importers:
       '@types/react-dom':
         specifier: ^18.3.1
         version: 18.3.7(@types/react@18.3.31)
-      cordis:
-        specifier: link:../../.dsh/source/current/vendor/cordis
-        version: link:../../.dsh/source/current/vendor/cordis
       jsdom:
         specifier: ^25.0.1
         version: 25.0.1
@@ -47,9 +50,6 @@ importers:
       react-dom:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
-      schemastery:
-        specifier: link:../../.dsh/source/current/vendor/schemastery
-        version: link:../../.dsh/source/current/vendor/schemastery
       tsdown:
         specifier: ^0.22.2
         version: 0.22.14(typescript@5.9.3)

@@ -42,25 +42,25 @@
     }
   },
   "peerDependencies": {
-    "cordis": "^4.0.0-rc.7",
-    "react": "^18.2.0",
-    "schemastery": "*"
+    "@deepseek-ai/cordis": "^4.0.1-rc.1",
+    "@deepseek-ai/schemastery": "^3.18.1-rc.1",
+    "react": "^18.2.0"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-client-runtime": "link:../../.dsh/source/current/packages/client/runtime",
-    "@deepseek-ai/dsh-client-ui-conversation": "link:../../.dsh/source/current/packages/client/ui-conversation",
-    "@deepseek-ai/dsh-client-ui-primitives": "link:../../.dsh/source/current/packages/client/ui-primitives",
-    "@deepseek-ai/dsh-client-ui-settings": "link:../../.dsh/source/current/packages/client/ui-settings",
-    "@deepseek-ai/dsh-client-ui-slots": "link:../../.dsh/source/current/packages/client/ui-slots",
+    "@deepseek-ai/cordis": "link:../test-Nagi-ovo/vendor/cordis",
+    "@deepseek-ai/dsh-client-runtime": "link:../test-Nagi-ovo/packages/client/runtime",
+    "@deepseek-ai/dsh-client-ui-conversation": "link:../test-Nagi-ovo/packages/client/ui-conversation",
+    "@deepseek-ai/dsh-client-ui-primitives": "link:../test-Nagi-ovo/packages/client/ui-primitives",
+    "@deepseek-ai/dsh-client-ui-settings": "link:../test-Nagi-ovo/packages/client/ui-settings",
+    "@deepseek-ai/dsh-client-ui-slots": "link:../test-Nagi-ovo/packages/client/ui-slots",
+    "@deepseek-ai/schemastery": "link:../test-Nagi-ovo/vendor/schemastery",
     "@types/node": "^22.0.0",
     "@types/react": "~18.3.1",
     "@types/react-dom": "^18.3.1",
-    "cordis": "link:../../.dsh/source/current/vendor/cordis",
     "jsdom": "^25.0.1",
     "lucide-react": "^1.30.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "schemastery": "link:../../.dsh/source/current/vendor/schemastery",
     "tsdown": "^0.22.2",
     "typescript": "^5.9.3",
     "vitest": "^4.1.1"
