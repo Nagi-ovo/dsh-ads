@@ -18,6 +18,11 @@
 - **V4 Pro is one spin away. Probably.** An orca in a God of Wealth hat runs a prize wheel stocked with Attention Heads, KV Cache, MoE experts, and an unlimited supply of “Thanks for playing.”
 - **The ads are fake. The plugins are real.** Community plugins from `dsh-external` rotate through sponsored slots that open their actual repositories.
 
+<p align="center">
+  <img src="assets/startup-score.png" width="346" alt="DSH benchmark center showing a 0.29 second startup time and nationwide rank"><br>
+  <sub>The startup time is measured. The nationwide rank is made up.</sub>
+</p>
+
 ## Chinese and English, two distinct flavors of internet trash
 
 Change Settings → Language and the artwork, copy, and interactions switch as a complete campaign. This is not the Chinese campaign with translated labels pasted over it.
@@ -72,11 +77,8 @@ https://github.com/user-attachments/assets/93ff08ef-cf32-4a87-bf63-274c1a0a71e2
 
 </div>
 
-<details>
-<summary>Disclaimer</summary>
+## Disclaimer
 
 This plugin is entertainment and is not affiliated with DeepSeek or any real company, product, or service. Every brand, person, domain, price, virus, and promise shown in its ads is fictional. The plugin does not scan, read, or modify files on the computer.
 
 “Verify fix” checks GitHub Star status only after the user clicks it. It prefers the local `gh` session or token and otherwise uses the anonymous public API. The result stays in the local browser.
-
-</details>

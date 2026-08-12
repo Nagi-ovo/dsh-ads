@@ -18,6 +18,11 @@
 - **这次一定能抽到 V4 Pro。** 戴财神帽的虎鲸掌管转盘，奖品包括 Attention Head、KV Cache、MoE 专家，以及永恒的「谢谢参与」。
 - **广告是假的，插件是真的。** `dsh-external` 社区插件会随机进入广告位，点击直接打开真实仓库。
 
+<p align="center">
+  <img src="assets/startup-score.png" width="346" alt="DSH 跑分中心显示 0.29 秒启动耗时和全国排名"><br>
+  <sub>启动耗时是真测的，全国排名是编的。</sub>
+</p>
+
 ## 中文、English，两套互联网垃圾美学
 
 切换 DSH 的「设置 → 语言」，素材、文案和交互会整套更换。不是给中文广告生硬套一层翻译。
@@ -74,11 +79,8 @@ https://github.com/user-attachments/assets/93ff08ef-cf32-4a87-bf63-274c1a0a71e2
 
 </div>
 
-<details>
-<summary>免责声明</summary>
+## 免责声明
 
 本插件纯属娱乐，与 DeepSeek 以及任何真实公司、产品或服务均无关联。广告里的品牌、人物、域名、价格、病毒和承诺均为虚构。插件不会扫描、读取或修改机器上的文件。
 
 「验证修复」只会在用户主动点击后查询一次 GitHub Star 状态，优先使用本机 `gh` 或 token，否则调用匿名公开 API。结果只保存在本机浏览器中。
-
-</details>

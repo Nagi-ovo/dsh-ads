@@ -14,6 +14,7 @@ const localShowcaseAssets = [
   'assets/reward-gate.png',
   'assets/settings.webp',
   'assets/poster-blue-whale-small.gif',
+  'assets/startup-score.png',
 ]
 
 const visualizeDemo =
@@ -32,5 +33,12 @@ describe('README showcase', () => {
   it('keeps the language switch visible', () => {
     expect(readmes[0]).toContain('README.en.md')
     expect(readmes[1]).toContain('README.md')
+  })
+
+  it('keeps the disclaimer visible without expanding a disclosure', () => {
+    for (const [index, title] of ['免责声明', 'Disclaimer'].entries()) {
+      expect(readmes[index]).toContain(`## ${title}`)
+      expect(readmes[index]).not.toContain(`<summary>${title}</summary>`)
+    }
   })
 })
