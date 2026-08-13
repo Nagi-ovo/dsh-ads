@@ -17,8 +17,7 @@ const localShowcaseAssets = [
   'assets/startup-score.png',
 ]
 
-const visualizeDemo =
-  'https://github.com/user-attachments/assets/93ff08ef-cf32-4a87-bf63-274c1a0a71e2'
+const visualizeDemo = ['assets/visualize-demo.webp', 'assets/visualize-demo.mp4']
 
 describe('README showcase', () => {
   it('keeps every shipped campaign visible in both languages', () => {
@@ -27,7 +26,10 @@ describe('README showcase', () => {
       for (const readme of readmes) expect(readme, asset).toContain(asset)
     }
 
-    for (const readme of readmes) expect(readme, 'visualize demo').toContain(visualizeDemo)
+    for (const asset of visualizeDemo) {
+      expect(existsSync(new URL(`../${asset}`, import.meta.url)), asset).toBe(true)
+      for (const readme of readmes) expect(readme, asset).toContain(asset)
+    }
   })
 
   it('keeps the language switch visible', () => {

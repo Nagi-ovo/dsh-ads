@@ -6,28 +6,18 @@
 
 <p align="center">
   <strong>Turn DeepSeek Harness into a 2005 web portal. Not even inference escapes the ads.</strong><br>
-  Gutters, conversations, inference, and pop-ups. Every empty pixel is inventory.
+  The ads are fake. The plugins are real. Your odds of unlocking V4 Pro remain terrible.
 </p>
 
 ![English mode with Imagegen whale plugin ads, fake antivirus warnings, a fake game, and the DSH message center](assets/english-mode.png)
 
-## How bad does it get?
+`dsh-ads` fills the gutters, conversation, inference, and bottom corner with fictional advertising. A rewarded ad can appear to pause inference while the model keeps working. The rest of the answer and any tool calls become visible when the ad ends.
 
-- **Every empty pixel is monetized.** Gutter banners, sponsored posts, a benchmark window, fake antivirus alerts, and a fake game all appear without blocking the composer or official dialogs.
-- **Inference gets an ad break.** It looks paused, but the model keeps working. The rest of the answer appears when the ad ends.
-- **V4 Pro is one spin away. Probably.** An orca in a God of Wealth hat runs a prize wheel stocked with Attention Heads, KV Cache, MoE experts, and an unlimited supply of “Thanks for playing.”
-- **The ads are fake. The plugins are real.** Public GitHub repositories tagged `dsh-plugin` rotate through sponsored slots that open their actual repositories, even after an owner transfer.
+The sponsored slots promote more than this repository. Public GitHub projects tagged [`dsh-plugin`](https://github.com/topics/dsh-plugin) and updated within the last two weeks enter the rotation. Each ad opens the real repository, and transferring that repository to another account does not remove it from discovery.
 
-<p align="center">
-  <img src="assets/startup-score.png" width="346" alt="DSH benchmark center showing a 0.29 second startup time and nationwide rank"><br>
-  <sub>The startup time is measured. The nationwide rank is made up.</sub>
-</p>
+## Two kinds of internet trash
 
-## Chinese and English, two distinct flavors of internet trash
-
-Change Settings → Language and the current page hot-swaps the artwork, copy, and interactions as a complete campaign without a reload. This is not the Chinese campaign with translated labels pasted over it.
-
-### Chinese mode: spin for V4 Pro
+Change Settings → Language and the current page immediately swaps the artwork, copy, and interactions without a reload. Chinese mode has browser games, a God of Wealth whale, and endless near-wins. English mode has fake antivirus, weird tricks, and actual gameplay*.
 
 ![The Chinese V4 Pro prize wheel with the God of Wealth whale and four unlock progress bars](assets/reward-gate.png)
 
@@ -35,7 +25,7 @@ Change Settings → Language and the current page hot-swaps the artwork, copy, a
 
 <table>
   <tr>
-    <th>Chinese: Blue Whale fake game (GIF)</th>
+    <th>Chinese: Blue Whale browser game</th>
     <th>English: actual gameplay*</th>
   </tr>
   <tr>
@@ -44,11 +34,14 @@ Change Settings → Language and the current page hot-swaps the artwork, copy, a
   </tr>
 </table>
 
+<p align="center">
+  <img src="assets/startup-score.png" width="346" alt="DSH benchmark center showing a 0.29 second startup time and nationwide rank"><br>
+  <sub>The startup time is measured. The nationwide rank is made up.</sub>
+</p>
+
 ## Install
 
-If you use the community [plugin-registry](https://github.com/dsh-external/plugin-registry), install `dsh-ads` from Settings → Plugins.
-
-You can also link a local checkout. Build output is committed, so no extra dependencies are required:
+If you use the community [plugin-registry](https://github.com/dsh-external/plugin-registry), install `dsh-ads` from Settings → Plugins. You can also link a local checkout. Build output is already committed:
 
 ```sh
 git clone https://github.com/Nagi-ovo/dsh-ads.git
@@ -61,15 +54,11 @@ Every placement has its own switch under Settings → Ads (Unofficial). Choices 
 
 ![Per-placement ad controls in DSH Settings](assets/settings.webp)
 
-## Free ad inventory. Seriously.
+## Free ad inventory
 
-Public repositories tagged `dsh-plugin` and updated within the last two weeks automatically enter the rotation. The message feed prioritizes plugins that have not appeared yet, and impression history stays in the local browser.
+Any public repository tagged `dsh-plugin` can enter the rotation. To provide custom copy or artwork, read the [contribution guide](contrib/README.md) and send a PR. Impression history stays in the local browser.
 
-Want your own copy or artwork? Read the [contribution guide](contrib/README.md) and send a PR.
-
-## One real ad
-
-From the same author: [dsh-visualize](https://github.com/Nagi-ovo/dsh-visualize) lets the model draw interactive UI directly inside the conversation. This is the only claim in this README that is not a parody.
+From the same author, [dsh-visualize](https://github.com/Nagi-ovo/dsh-visualize) lets the model render interactive UI directly inside a conversation. This is the only serious advertisement in this README.
 
 <div align="center">
 
