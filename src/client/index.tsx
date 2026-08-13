@@ -48,6 +48,9 @@ const DEFAULT_POPUP_FIRST_DELAY_MS = 10_000
 /** Delay before the bottom-left poster first appears, in ms. */
 const DEFAULT_POSTER_FIRST_DELAY_MS = 20_000
 
+/** Time each bottom-left poster remains visible before the next one replaces it. */
+const DEFAULT_POSTER_ROTATE_MS = 20_000
+
 /** Delay before a closed pop-up or poster returns, in ms. */
 const DEFAULT_RESPAWN_MS = 60_000
 
@@ -101,6 +104,7 @@ function AdDockEntry({ sessionId, useLocale }: PropsRuntime<'conversation.input.
         hitboxPx={DEFAULT_HITBOX_PX}
         popupFirstDelayMs={DEFAULT_POPUP_FIRST_DELAY_MS}
         posterFirstDelayMs={DEFAULT_POSTER_FIRST_DELAY_MS}
+        posterRotateMs={DEFAULT_POSTER_ROTATE_MS}
         respawnMs={DEFAULT_RESPAWN_MS}
         speedFirstDelayMs={DEFAULT_SPEED_FIRST_DELAY_MS}
         scareDelayMs={DEFAULT_SCARE_DELAY_MS}

@@ -88,6 +88,7 @@ function mount(corners = false): void {
         hitboxPx={7}
         popupFirstDelayMs={corners ? POPUP_FIRST_MS : 0}
         posterFirstDelayMs={0}
+        posterRotateMs={0}
         respawnMs={RESPAWN_MS}
         speedFirstDelayMs={corners ? SPEED_FIRST_MS : 0}
         scareDelayMs={corners ? SCARE_DELAY_MS : 0}
@@ -215,6 +216,40 @@ function pressNuke(): void {
 }
 
 describe('AdLayer', () => {
+  it('rotates the bottom-left poster automatically while it remains open', () => {
+    const posters: readonly AdCreative[] = [
+      { id: 'first', width: 300, height: 480, shape: 'tall', weight: 1, alt: '海报甲', src: 'data:,' },
+      { id: 'second', width: 300, height: 480, shape: 'tall', weight: 1, alt: '海报乙', src: 'data:,' },
+    ]
+    act(() => {
+      root.render(
+        <AdLayer
+          creatives={[]}
+          popups={[]}
+          posters={posters}
+          spawn={FAST}
+          hitboxPx={7}
+          popupFirstDelayMs={0}
+          posterFirstDelayMs={1000}
+          posterRotateMs={20_000}
+          respawnMs={RESPAWN_MS}
+          speedFirstDelayMs={0}
+          scareDelayMs={0}
+          scareHref="https://github.com/example-owner/example-repo"
+          chime={false}
+        />,
+      )
+    })
+    tick(1000)
+    expect(document.querySelector<HTMLImageElement>('img')?.alt).toBe('海报甲')
+    tick(19_999)
+    expect(document.querySelector<HTMLImageElement>('img')?.alt).toBe('海报甲')
+    tick(1)
+    expect(document.querySelector<HTMLImageElement>('img')?.alt).toBe('海报乙')
+    tick(20_000)
+    expect(document.querySelector<HTMLImageElement>('img')?.alt).toBe('海报甲')
+  })
+
   it('reserves one full-width English skyscraper for each ad tier', () => {
     const sponsoredTall: AdCreative = { id: 'sponsor-tall', width: 300, height: 480, shape: 'tall', weight: 1, alt: 's', src: 'data:,', sponsor: 'dsh-external/example' }
     const builtinTall: AdCreative = { id: 'builtin-tall', width: 300, height: 480, shape: 'tall', weight: 1, alt: 'b', src: 'data:,' }

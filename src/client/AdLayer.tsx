@@ -54,6 +54,8 @@ export interface AdLayerProps {
   readonly popupFirstDelayMs: number
   /** Delay before the bottom-left poster first appears, in ms; zero disables it. */
   readonly posterFirstDelayMs: number
+  /** Delay between automatic bottom-left poster changes, in ms; zero disables rotation. */
+  readonly posterRotateMs: number
   /**
    * Delay before a closed pop-up or poster comes back, in ms. Neither retracts
    * on its own, so this is the only thing that paces them after the first one.
@@ -302,7 +304,10 @@ export function englishGutterCandidates(
 export function AdLayer(props: AdLayerProps) {
   const { creatives, popups, posters, spawn, hitboxPx, chime } = props
   const locale = props.locale ?? 'zh'
-  const { popupFirstDelayMs, posterFirstDelayMs, respawnMs, scareDelayMs, scareHref, speedFirstDelayMs } = props
+  const {
+    popupFirstDelayMs, posterFirstDelayMs, posterRotateMs, respawnMs,
+    scareDelayMs, scareHref, speedFirstDelayMs,
+  } = props
   const viewport = useViewport()
   const safe = useSafeArea(viewport)
   const modalOpen = useModalOpen()
@@ -499,6 +504,30 @@ export function AdLayer(props: AdLayerProps) {
     }, posterRound.current === 0 ? posterFirstDelayMs : respawnMs)
     return () => clearTimeout(timer)
   }, [posters, posterFirstDelayMs, respawnMs, poster, retired, settings.poster])
+
+  // Keep the fake-game slot moving even when nobody manages to hit its tiny
+  // close target. A one-item localized pool stays still; changing the locale
+  // still replaces the current creative immediately through the effect above.
+  useEffect(() => {
+    if (
+      retired || !settings.poster || posters.length < 2
+      || posterRotateMs <= 0 || poster === undefined
+    ) return
+    const timer = setTimeout(() => {
+      const creative = posters[posterRound.current % posters.length]
+      if (creative === undefined) return
+      posterRound.current += 1
+      setPoster({
+        key: `poster-${posterRound.current}`,
+        creative,
+        side: 'left',
+        row: 0,
+        seed: Math.random(),
+        bornAt: Date.now(),
+      })
+    }, posterRotateMs)
+    return () => clearTimeout(timer)
+  }, [posters, posterRotateMs, poster, retired, settings.poster])
 
   const dismiss = useCallback((key: string) => {
     setAds((current) => current.filter((ad) => ad.key !== key))

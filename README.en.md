@@ -17,7 +17,7 @@ The sponsored slots promote more than this repository. Public GitHub projects ta
 
 ## Two kinds of internet trash
 
-Change Settings → Language and the current page immediately swaps the artwork, copy, and interactions without a reload. Chinese mode has browser games, a God of Wealth whale, and endless near-wins. English mode has fake antivirus, weird tricks, and actual gameplay*.
+Change Settings → Language and the current page immediately swaps the artwork, copy, and interactions without a reload. Chinese mode has browser games, a God of Wealth whale, and endless near-wins. Its two Blue Whale game posters rotate every 20 seconds. English mode has fake antivirus, weird tricks, and actual gameplay*.
 
 ![The Chinese V4 Pro prize wheel with the God of Wealth whale and four unlock progress bars](assets/reward-gate.png)
 

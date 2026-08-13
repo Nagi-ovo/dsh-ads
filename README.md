@@ -17,7 +17,7 @@
 
 ## 两套互联网垃圾美学
 
-切换 DSH 的「设置 → 语言」，当前页面会立即更换整套素材、文案和交互，不用刷新。中文模式主打页游、财神和「这次一定」；English mode 则是 fake antivirus、weird tricks 和 actual gameplay*。
+切换 DSH 的「设置 → 语言」，当前页面会立即更换整套素材、文案和交互，不用刷新。中文模式主打页游、财神和「这次一定」，两张贪玩蓝鲸海报每 20 秒自动切换；English mode 则是 fake antivirus、weird tricks 和 actual gameplay*。
 
 ![流式回答中插入的 V4 Pro 正式版抽奖广告：财神鲸、每轮一抽的转盘与四道解锁进度条](assets/reward-gate.png)
 
