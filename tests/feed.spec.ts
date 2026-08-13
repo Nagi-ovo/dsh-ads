@@ -46,8 +46,8 @@ describe('feedAd', () => {
     expect(shown('session:4')).toBe(first)
   })
 
-  it('works through the whole hub before repeating anyone', () => {
-    // Roughly half the turns go to the hub, so the run has to be long enough
+  it('works through the whole topic before repeating anyone', () => {
+    // Roughly half the turns go to community plugins, so the run has to be long enough
     // for its half to cover every plugin.
     const run = Array.from({ length: PLUGINS.length * 3 }, (_, i) => shown(`session:${i}`))
     const counts = new Map<string, number>()
@@ -68,7 +68,7 @@ describe('feedAd', () => {
     expect(run.filter((id) => id.startsWith('dsh-external/')).length).toBeGreaterThan(8)
   })
 
-  it('falls back to the house banners when the hub is unreachable', () => {
+  it('falls back to the house banners when topic discovery is unreachable', () => {
     setFeedPlugins([])
     expect(shown('offline:2')).toMatch(/^builtin-/)
   })

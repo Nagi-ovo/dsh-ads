@@ -32,7 +32,7 @@ export interface ContribAd {
 /** Every contributed entry, by file order. */
 export const CONTRIB_ADS: readonly ContribAd[] = [
   {
-    "slug": "dsh-external/dsh-visualize",
+    "slug": "Nagi-ovo/dsh-visualize",
     "copy": {
       "headline": "模型直接给你画界面",
       "sub": "对话里长出可交互卡片，不是贴一段代码",

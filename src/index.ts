@@ -4,10 +4,9 @@
  * The built-in banners need nothing from the host — they are baked into the
  * browser bundle and the layer's knobs all live where the user can reach them.
  * The dynamic tier is the reason this half exists at all: it advertises real
- * community plugins, the hub that lists them is private, and only the host
- * holds credentials for it. So this registers two routes — the sponsor list,
- * and the star check that lets the security alert verify through the host's
- * own GitHub login — and does nothing else.
+ * community plugins, so the host searches GitHub's public `dsh-plugin` topic.
+ * This registers two routes — the sponsor list and the star check that lets
+ * the security alert verify through the host's own GitHub login.
  *
  * A surface without the browser half simply has no ad layer, which is the
  * correct degradation for TUI, ACP, and headless.
@@ -49,21 +48,21 @@ export const inject = ['webServer']
 export interface Config {
   /**
    * How recently a plugin must have been pushed to enter the rotation, in
-   * days. Zero or less advertises the whole hub.
+   * days. Zero or less advertises the whole discovered topic.
    */
   freshDays?: number
-  /** How long a fetched catalog is reused before the hub is read again, in minutes. */
+  /** How long a search result is reused before GitHub is queried again, in minutes. */
   cacheMinutes?: number
 }
 
 /** Freshness window: a fortnight is long enough that a weekend release still gets seen. */
 const DEFAULT_FRESH_DAYS = 14
 
-/** Catalog reuse window; the hub regenerates far more slowly than this. */
+/** Search-result reuse window. */
 const DEFAULT_CACHE_MINUTES = 30
 
 /** This plugin's own slug, kept out of its own rotation. */
-const SELF_SLUG = 'dsh-external/dsh-ads'
+const SELF_SLUG = 'Nagi-ovo/dsh-ads'
 
 /** A payload plus when it was assembled. */
 interface CacheSlot {

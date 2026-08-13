@@ -9,7 +9,7 @@
  *
  * Which turns carry an ad is a pure function of the turn's `seq`. *Which* ad
  * they carry is decided once per turn by {@link feedAd} and then remembered,
- * which is what lets the feed work through the whole plugin hub without an ad
+ * which is what lets the feed work through the whole plugin topic without an ad
  * ever changing under a reader mid-scroll.
  */
 

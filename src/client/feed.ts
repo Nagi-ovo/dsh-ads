@@ -6,7 +6,7 @@
  * of a different height shoves everything below it and jolts whatever the user
  * was reading. The feed has no such constraint — each ad arrives with a new
  * turn, below everything already on screen — so this is the surface that can
- * work through the whole hub instead of the eight plugins one conversation
+ * work through the whole discovered topic instead of the eight plugins one conversation
  * happens to draw.
  *
  * Two rules, and they pull against each other:
@@ -85,7 +85,7 @@ function hubCandidates(locale: AdLocale): readonly Candidate[] {
  * least-seen queue would surface the artwork about once in twenty ads and
  * quietly retire the best thing the plugin has. Splitting keeps both visible,
  * and inside each half the order is still strictly least-seen, so nothing in
- * the hub is starved by it.
+ * community plugins are starved by it.
  *
  * @param key - stable turn identity, `<session>:<seq>`.
  * @param builtins - the shipped banner pool.

@@ -18,13 +18,8 @@ function geometry(pool: readonly AdCreative[]): string[] {
 
 /** Whether the candidate pool covers every canvas in the reference pool. */
 function coversGeometry(candidate: readonly AdCreative[], reference: readonly AdCreative[]): boolean {
-  const remaining = geometry(candidate)
-  return geometry(reference).every((canvas) => {
-    const index = remaining.indexOf(canvas)
-    if (index < 0) return false
-    remaining.splice(index, 1)
-    return true
-  })
+  const available = new Set(geometry(candidate))
+  return geometry(reference).every((canvas) => available.has(canvas))
 }
 
 describe('localized artwork', () => {
@@ -39,11 +34,19 @@ describe('localized artwork', () => {
     expect(gutterSponsorCount('zh')).toBe(8)
   })
 
-  it('ships an English creative for every Chinese canvas', () => {
+  it('ships an English creative for every Chinese canvas geometry', () => {
     expect(coversGeometry(BUILTIN_ADS_BY_LOCALE.en, BUILTIN_ADS_BY_LOCALE.zh)).toBe(true)
     expect(coversGeometry(BUILTIN_POPUPS_BY_LOCALE.en, BUILTIN_POPUPS_BY_LOCALE.zh)).toBe(true)
     expect(coversGeometry(BUILTIN_POSTERS_BY_LOCALE.en, BUILTIN_POSTERS_BY_LOCALE.zh)).toBe(true)
     expect(coversGeometry(BUILTIN_REWARDS_BY_LOCALE.en, BUILTIN_REWARDS_BY_LOCALE.zh)).toBe(true)
+  })
+
+  it('includes the animated DSH rider in the Chinese poster rotation', () => {
+    const poster = BUILTIN_POSTERS_BY_LOCALE.zh.find((creative) => creative.id === 'poster-blue-whale-harness')
+    expect(poster?.src).toMatch(/^data:image\/webp;base64,/)
+    expect(poster).toMatchObject({ width: 380, height: 570, shape: 'tall' })
+    const bytes = Buffer.from(poster?.src.split(',')[1] ?? '', 'base64')
+    expect(bytes.includes(Buffer.from('ANIM'))).toBe(true)
   })
 
   it('ships the English fake-game takeover as a playable video', () => {

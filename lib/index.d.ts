@@ -27,10 +27,10 @@ declare const inject: string[];
 interface Config {
   /**
    * How recently a plugin must have been pushed to enter the rotation, in
-   * days. Zero or less advertises the whole hub.
+   * days. Zero or less advertises the whole discovered topic.
    */
   freshDays?: number;
-  /** How long a fetched catalog is reused before the hub is read again, in minutes. */
+  /** How long a search result is reused before GitHub is queried again, in minutes. */
   cacheMinutes?: number;
 }
 /**

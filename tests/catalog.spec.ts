@@ -1,11 +1,7 @@
-/**
- * Reading the hub, and the one decision that could quietly break the tier:
- * the freshness window is anchored to the catalog's own newest push, not to
- * the clock. Get that wrong and the baked snapshot returns nothing forever.
- */
+/** Topic discovery and freshness filtering for community plugin ads. */
 
 import { describe, expect, it } from 'vitest'
-import { parseCatalog, selectFresh } from '../src/catalog.ts'
+import { parseSearchResults, selectFresh } from '../src/catalog.ts'
 import type { SponsoredPlugin } from '../src/protocol.ts'
 
 /** Days between the oldest and newest fixture push. */
@@ -15,38 +11,65 @@ const SPAN_DAYS = 40
 function plugin(name: string, daysAgo: number): SponsoredPlugin {
   const at = Date.UTC(2026, 0, 1 + SPAN_DAYS - daysAgo)
   return {
-    slug: `dsh-external/${name}`,
+    slug: `owner/${name}`,
     name,
     description: '',
-    url: `https://github.com/dsh-external/${name}`,
+    url: `https://github.com/owner/${name}`,
     pushedAt: new Date(at).toISOString(),
     tags: [],
   }
 }
 
-describe('parseCatalog', () => {
-  it('prefers the hub note over the repository description', () => {
-    const text = JSON.stringify({
-      repos: [{ name: 'a', url: 'u', description: 'repo blurb', note: 'hub blurb', pushedAt: '', tags: [] }],
-    })
-    expect(parseCatalog(text, 'dsh-external')[0]?.description).toBe('hub blurb')
+/** One GitHub repository-search record. */
+function searchRepo(name: string, overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    full_name: `owner/${name}`,
+    name,
+    html_url: `https://github.com/owner/${name}`,
+    description: `${name} blurb`,
+    pushed_at: '2026-08-13T12:00:00Z',
+    topics: ['dsh-plugin', 'visualization'],
+    archived: false,
+    disabled: false,
+    fork: false,
+    ...overrides,
+  }
+}
+
+describe('parseSearchResults', () => {
+  it('combines paginated gh output and keeps repository ownership', () => {
+    const text = JSON.stringify([
+      { items: [searchRepo('one')] },
+      { items: [searchRepo('two', { full_name: 'another/two', html_url: 'https://github.com/another/two' })] },
+    ])
+    expect(parseSearchResults(text).map((repo) => repo.slug)).toEqual(['owner/one', 'another/two'])
+    expect(parseSearchResults(text)[0]?.tags).toEqual(['visualization'])
   })
 
-  it('drops entries the hub already marks as unshowable', () => {
+  it('drops forks, archived repositories, disabled repositories, and untagged records', () => {
     const text = JSON.stringify({
-      repos: [
-        { name: 'shown', url: 'u' },
-        { name: 'hidden', url: 'u', hide: true },
-        { name: 'blank', url: 'u', empty: true },
-        { name: 'nameless', url: '' },
-        'not an object',
+      items: [
+        searchRepo('shown'),
+        searchRepo('fork', { fork: true }),
+        searchRepo('archived', { archived: true }),
+        searchRepo('disabled', { disabled: true }),
+        searchRepo('untagged', { topics: ['dsh'] }),
+        { name: 'missing-fields', topics: ['dsh-plugin'] },
       ],
     })
-    expect(parseCatalog(text, 'dsh-external').map((p) => p.name)).toEqual(['shown'])
+    expect(parseSearchResults(text).map((repo) => repo.name)).toEqual(['shown'])
   })
 
-  it('yields nothing for a document without a repos array', () => {
-    expect(parseCatalog('{"stats":{}}', 'dsh-external')).toEqual([])
+  it('deduplicates case-insensitive repository identities across pages', () => {
+    const text = JSON.stringify([
+      { items: [searchRepo('one')] },
+      { items: [searchRepo('one', { full_name: 'OWNER/ONE' })] },
+    ])
+    expect(parseSearchResults(text)).toHaveLength(1)
+  })
+
+  it('yields nothing for a document without result pages', () => {
+    expect(parseSearchResults('{"total_count":0}')).toEqual([])
   })
 })
 
@@ -54,23 +77,20 @@ describe('selectFresh', () => {
   const pool = [plugin('new', 0), plugin('recent', 10), plugin('old', 30)]
 
   it('keeps the window open relative to the newest push, not the clock', () => {
-    // The fixture is dated 2026 and will keep ageing; anchoring on wall-clock
-    // time would make this return nothing, which is exactly the bug that would
-    // make the offline snapshot useless.
-    expect(selectFresh(pool, 14, '').map((p) => p.name)).toEqual(['new', 'recent'])
+    expect(selectFresh(pool, 14, '').map((repo) => repo.name)).toEqual(['new', 'recent'])
   })
 
   it('keeps everything when the window is disabled', () => {
     expect(selectFresh(pool, 0, '')).toHaveLength(3)
   })
 
-  it('leaves the ad layer out of its own rotation', () => {
-    expect(selectFresh(pool, 0, 'dsh-external/new').map((p) => p.name)).toEqual(['recent', 'old'])
+  it('leaves the ad layer out of its own rotation case-insensitively', () => {
+    expect(selectFresh(pool, 0, 'OWNER/NEW').map((repo) => repo.name)).toEqual(['recent', 'old'])
   })
 
   it('drops entries with no usable push date', () => {
     expect(selectFresh([...pool, plugin('undated', 0)].map(
-      (p) => p.name === 'undated' ? { ...p, pushedAt: '' } : p,
-    ), 0, '').map((p) => p.name)).toEqual(['new', 'recent', 'old'])
+      (repo) => repo.name === 'undated' ? { ...repo, pushedAt: '' } : repo,
+    ), 0, '').map((repo) => repo.name)).toEqual(['new', 'recent', 'old'])
   })
 })

@@ -4,7 +4,7 @@
  * This module owns the *gutter* half of it. Chinese mode keeps the original
  * eight-plugin rotation; English mode uses three, leaving most edge inventory
  * to the localized built-ins instead of turning both columns into a plugin
- * directory. Working through the rest of the hub is the feed's job; see
+ * directory. Working through the rest of the topic is the feed's job; see
  * [feed.ts](./feed.ts) for why that placement can carry the complete list.
  *
  * One fetch per page load, shared at module scope: both placements want the
@@ -54,7 +54,7 @@ async function fetchPlugins(): Promise<readonly SponsoredPlugin[]> {
     return Array.isArray(payload.plugins) ? payload.plugins : []
   } catch {
     // Swallowed: a host without the node half, an offline machine, or a
-    // `gh` that cannot see the hub all land here. The built-in banners are
+    // Failed GitHub discovery channels all land here. The built-in banners are
     // unaffected, so the layer simply has less inventory.
     return []
   }

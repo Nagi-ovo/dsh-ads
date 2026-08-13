@@ -59,7 +59,7 @@ const DEFAULT_RESPAWN_MS = 60_000
 const DEFAULT_SPEED_FIRST_DELAY_MS = 400
 
 /** Where the alert's and the benchmark's calls to action send the user. */
-const SCARE_HREF = 'https://github.com/dsh-external/dsh-ads'
+const SCARE_HREF = 'https://github.com/Nagi-ovo/dsh-ads'
 
 /** Gap between the benchmark leaving and the security alert landing, in ms. */
 const DEFAULT_SCARE_DELAY_MS = 4_000

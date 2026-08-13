@@ -1,13 +1,11 @@
 /**
- * Reading the plugin hub.
+ * Discovering community plugins through GitHub's `dsh-plugin` topic.
  *
- * `dsh-external/hub` is a private repository, so there is no anonymous URL to
- * fetch: every path here spends someone's GitHub credentials. Three are tried
- * in order of how likely they are to be both present and current — the `gh`
- * CLI, which every hub member already has authenticated; a token from the
- * environment, for headless hosts; and finally the snapshot baked in at build
- * time, which is stale but always works and keeps the ad layer from depending
- * on the network to have anything to show.
+ * Repository ownership is deliberately irrelevant: a plugin remains visible
+ * after a transfer between an organisation and a personal account. The host
+ * tries its authenticated `gh` session first, then a token, then GitHub's
+ * anonymous public API. A generated snapshot keeps the ad layer useful while
+ * GitHub is unavailable or rate-limited.
  *
  * @module
  */
@@ -19,99 +17,101 @@ import { CATALOG_SNAPSHOT } from './catalog-snapshot.ts'
 
 const execFileAsync = promisify(execFile)
 
-/** Owner/repo of the hub catalog. */
-const HUB_REPO = 'dsh-external/hub'
+/** GitHub topic that opts a public repository into DSH plugin discovery. */
+export const PLUGIN_TOPIC = 'dsh-plugin'
 
-/** Path of the catalog within the hub. */
-const HUB_PATH = 'catalog.json'
+/** GitHub repository-search expression shared by every live discovery path. */
+export const SEARCH_QUERY = `topic:${PLUGIN_TOPIC} is:public archived:false`
 
-/** Cap on the fetched catalog, in bytes; the real one is ~140 KB. */
-const MAX_CATALOG_BYTES = 8 * 1024 * 1024
+/** GitHub's maximum repository-search page size. */
+const PAGE_SIZE = 100
 
-/** One repository as the hub records it; every other field is ignored here. */
-interface HubRepo {
+/** GitHub repository search exposes at most its first 1,000 matches. */
+const MAX_SEARCH_PAGES = 10
+
+/** Bound stdout from a credentialed multi-page `gh api` search. */
+const MAX_SEARCH_BYTES = 32 * 1024 * 1024
+
+/** One repository returned by GitHub's search API. */
+interface GitHubRepo {
+  readonly full_name?: unknown
   readonly name?: unknown
-  readonly url?: unknown
+  readonly html_url?: unknown
   readonly description?: unknown
-  readonly note?: unknown
-  readonly pushedAt?: unknown
-  readonly tags?: unknown
-  readonly hide?: unknown
-  readonly empty?: unknown
+  readonly pushed_at?: unknown
+  readonly topics?: unknown
+  readonly archived?: unknown
+  readonly disabled?: unknown
+  readonly fork?: unknown
 }
 
-/** The catalog document. */
-interface HubCatalog {
-  readonly repos?: unknown
+/** One page returned by GitHub's repository-search API. */
+interface GitHubSearchPage {
+  readonly total_count?: unknown
+  readonly items?: unknown
 }
 
 /**
- * Narrow one hub record into a sponsor, or reject it.
+ * Narrow one search record into a sponsor, or reject it.
  *
- * Hidden and empty repositories are dropped because the hub already marks them
- * as not worth showing; anything missing a name or URL is dropped because an
- * advertisement nobody can act on is just noise.
- *
- * @param raw - one entry of the catalog's `repos` array.
- * @param owner - hub owner, used to build the `<owner>/<repo>` slug.
- * @returns the sponsor, or undefined when the entry is not advertisable.
+ * @param raw - one item from GitHub's repository-search response.
+ * @returns the sponsor, or undefined when the repository is not eligible.
  */
-function toSponsor(raw: unknown, owner: string): SponsoredPlugin | undefined {
+function toSponsor(raw: unknown): SponsoredPlugin | undefined {
   if (typeof raw !== 'object' || raw === null) return undefined
-  const repo = raw as HubRepo
-  if (repo.hide === true || repo.empty === true) return undefined
+  const repo = raw as GitHubRepo
+  if (repo.archived === true || repo.disabled === true || repo.fork === true) return undefined
+  const slug = typeof repo.full_name === 'string' ? repo.full_name : ''
   const name = typeof repo.name === 'string' ? repo.name : ''
-  const url = typeof repo.url === 'string' ? repo.url : ''
-  if (name === '' || url === '') return undefined
-  // The hub's `note` is an editorialised one-liner and `description` is the
-  // repo's own; the note reads better as ad copy when both exist.
-  const note = typeof repo.note === 'string' ? repo.note : ''
-  const description = typeof repo.description === 'string' ? repo.description : ''
+  const url = typeof repo.html_url === 'string' ? repo.html_url : ''
+  const topics = Array.isArray(repo.topics)
+    ? repo.topics.filter((topic): topic is string => typeof topic === 'string')
+    : []
+  if (slug.split('/').length !== 2 || name === '' || url === '' || !topics.includes(PLUGIN_TOPIC)) return undefined
   return {
-    slug: `${owner}/${name}`,
+    slug,
     name,
-    description: note !== '' ? note : description,
+    description: typeof repo.description === 'string' ? repo.description : '',
     url,
-    pushedAt: typeof repo.pushedAt === 'string' ? repo.pushedAt : '',
-    tags: Array.isArray(repo.tags) ? repo.tags.filter((tag): tag is string => typeof tag === 'string') : [],
+    pushedAt: typeof repo.pushed_at === 'string' ? repo.pushed_at : '',
+    tags: topics.filter((topic) => topic !== PLUGIN_TOPIC),
   }
 }
 
 /**
- * Parse a catalog document into sponsors.
- * @param text - the raw `catalog.json` body.
- * @param owner - hub owner, for slugs.
- * @returns every advertisable plugin, in hub order.
+ * Parse one GitHub search response or `gh api --slurp` page array.
+ *
+ * @param text - raw JSON from GitHub or `gh`.
+ * @returns eligible public DSH plugins in search order.
  */
-export function parseCatalog(text: string, owner: string): readonly SponsoredPlugin[] {
+export function parseSearchResults(text: string): readonly SponsoredPlugin[] {
   const parsed: unknown = JSON.parse(text)
-  const repos = (parsed as HubCatalog | undefined)?.repos
-  if (!Array.isArray(repos)) return []
+  const pages = Array.isArray(parsed) ? parsed : [parsed]
   const out: SponsoredPlugin[] = []
-  for (const raw of repos) {
-    const sponsor = toSponsor(raw, owner)
-    if (sponsor !== undefined) out.push(sponsor)
+  const seen = new Set<string>()
+  for (const page of pages) {
+    if (typeof page !== 'object' || page === null) continue
+    const items = (page as GitHubSearchPage).items
+    if (!Array.isArray(items)) continue
+    for (const item of items) {
+      const sponsor = toSponsor(item)
+      if (sponsor === undefined || seen.has(sponsor.slug.toLowerCase())) continue
+      seen.add(sponsor.slug.toLowerCase())
+      out.push(sponsor)
+    }
   }
   return out
 }
 
 /**
- * Keep the plugins pushed within the freshness window.
+ * Keep plugins pushed within the freshness window.
  *
- * The window is a window rather than a top-N because exposure must not depend
- * on who happened to have a session open when someone pushed: everyone who
- * shipped this fortnight is eligible, and which of them a given user sees is
- * the browser's fairness ledger to decide.
- *
- * It is anchored to the newest push *in the list*, not to the wall clock. A
- * live catalog makes the two identical, and a baked snapshot months old still
- * yields its own last fortnight instead of yielding nothing at all — which is
- * the only way the offline fallback is worth having.
+ * The window is anchored to the newest push in the list rather than the wall
+ * clock, so an older offline snapshot still yields its own latest fortnight.
  *
  * @param plugins - candidates.
  * @param freshDays - window width in days; zero or less keeps everything.
- * @param excludeSlug - a plugin to drop, normally this one — an ad layer that
- * advertises itself takes a slot away from someone who did not write it.
+ * @param excludeSlug - plugin to drop, normally this ad layer itself.
  * @returns the eligible subset.
  */
 export function selectFresh(
@@ -119,8 +119,9 @@ export function selectFresh(
   freshDays: number,
   excludeSlug: string,
 ): readonly SponsoredPlugin[] {
+  const excluded = excludeSlug.toLowerCase()
   const dated = plugins
-    .filter((plugin) => plugin.slug !== excludeSlug)
+    .filter((plugin) => plugin.slug.toLowerCase() !== excluded)
     .map((plugin) => ({ plugin, pushed: Date.parse(plugin.pushedAt) }))
     .filter((entry) => Number.isFinite(entry.pushed))
   if (freshDays <= 0) return dated.map((entry) => entry.plugin)
@@ -131,58 +132,82 @@ export function selectFresh(
 }
 
 /**
- * Read the catalog through the `gh` CLI.
- * @returns the raw document body.
- * @throws when `gh` is absent, unauthenticated, or denied access to the hub.
+ * Search through the authenticated `gh` CLI.
+ *
+ * @returns all exposed result pages as a JSON array.
+ * @throws when `gh` is absent, unauthenticated, or GitHub rejects the search.
  */
 async function readViaGh(): Promise<string> {
   const { stdout } = await execFileAsync(
     'gh',
-    ['api', `repos/${HUB_REPO}/contents/${HUB_PATH}`, '-H', 'Accept: application/vnd.github.raw'],
-    { maxBuffer: MAX_CATALOG_BYTES, timeout: 20_000 },
+    [
+      'api', '--paginate', '--slurp', '--method', 'GET', 'search/repositories',
+      '-f', `q=${SEARCH_QUERY}`, '-f', 'sort=updated', '-f', 'order=desc', '-f', `per_page=${PAGE_SIZE}`,
+    ],
+    { maxBuffer: MAX_SEARCH_BYTES, timeout: 20_000 },
   )
   return stdout
 }
 
 /**
- * Read the catalog with a token from the environment.
- * @param token - a GitHub token with read access to the hub.
- * @returns the raw document body.
- * @throws when GitHub refuses the request.
+ * Search GitHub directly, with or without a token.
+ *
+ * @param token - optional GitHub token used only as an Authorization header.
+ * @returns all exposed result pages as a JSON array.
+ * @throws when GitHub rejects a page or returns invalid pagination metadata.
  */
-async function readViaToken(token: string): Promise<string> {
-  const response = await fetch(`https://api.github.com/repos/${HUB_REPO}/contents/${HUB_PATH}`, {
-    headers: { accept: 'application/vnd.github.raw', authorization: `Bearer ${token}` },
-  })
-  if (!response.ok) throw new Error(`GitHub responded ${response.status}`)
-  return await response.text()
+async function readViaGitHub(token: string): Promise<string> {
+  const pages: unknown[] = []
+  for (let page = 1; page <= MAX_SEARCH_PAGES; page += 1) {
+    const url = new URL('https://api.github.com/search/repositories')
+    url.searchParams.set('q', SEARCH_QUERY)
+    url.searchParams.set('sort', 'updated')
+    url.searchParams.set('order', 'desc')
+    url.searchParams.set('per_page', String(PAGE_SIZE))
+    url.searchParams.set('page', String(page))
+    const headers: Record<string, string> = {
+      accept: 'application/vnd.github+json',
+      'user-agent': 'dsh-ads',
+      'x-github-api-version': '2022-11-28',
+    }
+    if (token !== '') headers.authorization = `Bearer ${token}`
+    const response = await fetch(url, { headers, signal: AbortSignal.timeout(20_000) })
+    if (!response.ok) throw new Error(`GitHub responded ${response.status}`)
+    const body: unknown = await response.json()
+    pages.push(body)
+    if (typeof body !== 'object' || body === null) throw new Error('GitHub returned a non-object search page')
+    const searchPage = body as GitHubSearchPage
+    if (!Array.isArray(searchPage.items)) throw new Error('GitHub returned no search items')
+    const total = typeof searchPage.total_count === 'number' ? searchPage.total_count : searchPage.items.length
+    if (page * PAGE_SIZE >= total || searchPage.items.length < PAGE_SIZE) break
+  }
+  return JSON.stringify(pages)
 }
 
 /**
- * Assemble the payload the browser half consumes.
+ * Assemble the payload consumed by the browser half.
  *
- * Never throws: the last resort is the baked snapshot, and a plugin whose only
- * job is to put jokes on screen must not be able to fail a page.
+ * Never throws: the generated snapshot is the final fallback.
  *
  * @param nowMs - current epoch time.
  * @param freshDays - freshness window in days.
  * @param excludeSlug - plugin to leave out of its own rotation.
- * @returns the sponsor list, tagged with where it came from.
+ * @returns the sponsor list and its discovery source.
  */
 export async function loadRegistry(
   nowMs: number,
   freshDays: number,
   excludeSlug: string,
 ): Promise<RegistryPayload> {
-  const owner = HUB_REPO.split('/')[0] ?? 'dsh-external'
   const token = process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN ?? ''
   const attempts: readonly { source: RegistryPayload['source']; read: () => Promise<string> }[] = [
     { source: 'gh-cli', read: readViaGh },
-    ...(token === '' ? [] : [{ source: 'github-token' as const, read: () => readViaToken(token) }]),
+    ...(token === '' ? [] : [{ source: 'github-token' as const, read: () => readViaGitHub(token) }]),
+    { source: 'github-public', read: () => readViaGitHub('') },
   ]
   for (const attempt of attempts) {
     try {
-      const plugins = parseCatalog(await attempt.read(), owner)
+      const plugins = parseSearchResults(await attempt.read())
       if (plugins.length === 0) continue
       return {
         generated: new Date(nowMs).toISOString(),
@@ -191,11 +216,8 @@ export async function loadRegistry(
         plugins: selectFresh(plugins, freshDays, excludeSlug),
       }
     } catch {
-      // Swallowed deliberately, once per channel: `gh` may be missing or
-      // logged out and the token may be scoped elsewhere, and neither is an
-      // error the user needs to hear about from an ad layer. The loop falls
-      // through to the next channel and finally to the snapshot, which cannot
-      // fail.
+      // Swallow one failed discovery channel and continue to the next. Missing
+      // credentials, API rate limits, and offline hosts must not break an ad.
       continue
     }
   }

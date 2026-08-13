@@ -2,10 +2,9 @@
  * The wire between the two halves of the dynamic ad tier.
  *
  * The built-in banners are baked into the browser bundle and need no host at
- * all. The dynamic tier does: the plugin hub is a private repository, so the
- * catalog can only be read through the user's own GitHub credentials, which
- * live on the host side. The browser half therefore asks the host for a
- * trimmed, already-filtered list rather than talking to GitHub itself.
+ * all. The dynamic tier asks the host to search GitHub's `dsh-plugin` topic so
+ * repository transfers do not affect discovery. The browser receives only a
+ * trimmed, already-filtered list rather than calling GitHub itself.
  *
  * @module
  */
@@ -40,7 +39,7 @@ export interface SponsoredPlugin {
   readonly url: string
   /** Last push, ISO-8601; drives the freshness window. */
   readonly pushedAt: string
-  /** Hub tags, shown as the banner's little category flag. */
+  /** GitHub topics, shown as the banner's little category flag. */
   readonly tags: readonly string[]
 }
 
@@ -49,9 +48,9 @@ export interface RegistryPayload {
   /** When the served list was assembled, ISO-8601. */
   readonly generated: string
   /** Where it came from, for the client to report when nothing shows up. */
-  readonly source: 'gh-cli' | 'github-token' | 'snapshot'
+  readonly source: 'gh-cli' | 'github-token' | 'github-public' | 'snapshot'
   /** The freshness window that was applied, in days. */
   readonly freshDays: number
-  /** The eligible plugins, hub order preserved. */
+  /** The eligible plugins, most recently updated first. */
   readonly plugins: readonly SponsoredPlugin[]
 }

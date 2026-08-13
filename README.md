@@ -16,7 +16,7 @@
 - **能塞广告的地方都塞了。** 两侧广告栏、对话信息流、跑分中心、假杀毒弹窗和假游戏全套供应，同时给输入框和官方弹窗让路。
 - **推理到一半也得看广告。** 看起来像暂停，实际上模型没停，后面的回答会等广告结束再一起出现。
 - **这次一定能抽到 V4 Pro。** 戴财神帽的虎鲸掌管转盘，奖品包括 Attention Head、KV Cache、MoE 专家，以及永恒的「谢谢参与」。
-- **广告是假的，插件是真的。** `dsh-external` 社区插件会随机进入广告位，点击直接打开真实仓库。
+- **广告是假的，插件是真的。** GitHub 上带 `dsh-plugin` topic 的公开插件会随机进入广告位，点击直接打开真实仓库，换组织或账号也不会掉队。
 
 <p align="center">
   <img src="assets/startup-score.png" width="346" alt="DSH 跑分中心显示 0.29 秒启动耗时和全国排名"><br>
@@ -53,7 +53,7 @@
 也可以链接本地仓库。构建产物已提交，无需额外安装依赖：
 
 ```sh
-git clone https://github.com/dsh-external/dsh-ads.git
+git clone https://github.com/Nagi-ovo/dsh-ads.git
 cd /path/to/deepseek-harness
 pnpm dsh plugin --profile web add link:/path/to/dsh-ads
 # 重启 dsh web，刷新页面
@@ -65,17 +65,17 @@ pnpm dsh plugin --profile web add link:/path/to/dsh-ads
 
 ## 免费广告位，真的
 
-`dsh-external` 里最近两周更新过的插件会自动进入轮播。对话信息流优先展示没出现过的插件，曝光记录只留在本机浏览器里。
+GitHub 上带 `dsh-plugin` topic、且最近两周更新过的公开插件会自动进入轮播。对话信息流优先展示没出现过的插件，曝光记录只留在本机浏览器里。
 
 想换成自己的文案或图片？看 [投稿说明](contrib/README.md)，发个 PR 就行。
 
 ## 顺便打个广告（这次是真的）
 
-同一个作者的 [dsh-visualize](https://github.com/dsh-external/dsh-visualize)：模型直接把可交互界面画进对话流。这条是全 README 唯一没编的。
+同一个作者的 [dsh-visualize](https://github.com/Nagi-ovo/dsh-visualize)：模型直接把可交互界面画进对话流。这条是全 README 唯一没编的。
 
 <div align="center">
 
-https://github.com/user-attachments/assets/93ff08ef-cf32-4a87-bf63-274c1a0a71e2
+[![dsh-visualize 对话内生成交互式可视化演示](assets/visualize-demo.webp)](assets/visualize-demo.mp4)
 
 </div>
 

@@ -79,7 +79,7 @@ const iconStyle: CSSProperties = { display: 'flex', flex: '0 0 auto', opacity: 0
 const blurbStyle: CSSProperties = { fontSize: 13, lineHeight: 1.5, opacity: 0.55, marginTop: 2 }
 
 /** Where the "who made this" line points. */
-const REPO_URL = 'https://github.com/dsh-external/dsh-ads'
+const REPO_URL = 'https://github.com/Nagi-ovo/dsh-ads'
 
 const sourceStyle: CSSProperties = {
   marginBottom: 14,

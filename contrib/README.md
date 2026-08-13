@@ -1,6 +1,6 @@
 # 给自己的插件投个广告
 
-这个插件会把 `dsh-external` 里最近两周更新过的插件，自动画成 2005 年风格的横幅塞进广告位。**你什么都不用做就已经在轮播里了** —— 名字和一句话简介会被自动排版成一张花花绿绿的图。
+这个插件会把 GitHub 上带 `dsh-plugin` topic、且最近两周更新过的公开插件，自动画成 2005 年风格的横幅塞进广告位。**加好 topic 就已经在轮播里了** —— 名字和一句话简介会被自动排版成一张花花绿绿的图。
 
 不满意自动生成的效果，可以发 PR 覆盖它。
 
@@ -10,7 +10,7 @@
 
 ```json
 {
-  "repo": "dsh-external/dsh-visualize",
+  "repo": "Nagi-ovo/dsh-visualize",
   "headline": "模型直接给你画界面",
   "sub": "对话里长出可交互卡片，不是贴一段代码",
   "badge": "本站强推",
@@ -27,7 +27,7 @@
 
 ```json
 {
-  "repo": "dsh-external/your-plugin",
+  "repo": "your-name/your-plugin",
   "image": "your-plugin.webp"
 }
 ```

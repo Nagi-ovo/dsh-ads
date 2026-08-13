@@ -33,6 +33,7 @@ const BANNER_META = {
 /** Bottom-left takeover posters: the browser-game inventory, the heaviest slot. */
 const POSTER_META = {
   'poster-blue-whale': { alt: '贪玩蓝鲸 是兄弟就来蹬我 一句999轮 显卡全靠爆 上线送VIP15 88888 Token' },
+  'poster-blue-whale-harness': { alt: '贪玩蓝鲸 DSH 蓝鲸娘身披金甲骑乘黑色战马 今晚10点深海开服' },
 }
 
 /** Corner pop-up artwork: the loud full-colour set, rotated in file order. */
