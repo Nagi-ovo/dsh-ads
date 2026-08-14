@@ -41,14 +41,14 @@ Change Settings → Language and the current page immediately swaps the artwork,
 
 ## Install
 
-If you use the community [plugin-registry](https://github.com/dsh-external/plugin-registry), install `dsh-ads` from Settings → Plugins. You can also link a local checkout. Build output is already committed:
+Install the plugin from GitHub into DSH's `web` profile:
 
 ```sh
-git clone https://github.com/Nagi-ovo/dsh-ads.git
-cd /path/to/deepseek-harness
-pnpm dsh plugin --profile web add link:/path/to/dsh-ads
-# Restart dsh web, then refresh the page.
+dsh plugin --profile web add github:Nagi-ovo/dsh-ads
+# If dsh web is running, restart it and refresh the page.
 ```
+
+Run `dsh --profile web --dump-config` to confirm that the plugin is present in the final configuration. For local development, clone the repository and run `dsh plugin --profile web add .` from its root; committed build output means no separate build step is required. Users of the community [plugin-registry](https://github.com/dsh-external/plugin-registry) can also install it from Settings → Plugins.
 
 Every placement has its own switch under Settings → Ads (Unofficial). Choices persist across restarts.
 

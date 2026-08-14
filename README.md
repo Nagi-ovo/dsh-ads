@@ -41,14 +41,14 @@
 
 ## 安装
 
-装了社区 [plugin-registry](https://github.com/dsh-external/plugin-registry) 的用户，可以直接在「设置 → 插件」里安装 `dsh-ads`。也可以链接本地仓库，构建产物已经提交：
+推荐直接从 GitHub 安装到 DSH 的 `web` profile：
 
 ```sh
-git clone https://github.com/Nagi-ovo/dsh-ads.git
-cd /path/to/deepseek-harness
-pnpm dsh plugin --profile web add link:/path/to/dsh-ads
-# 重启 dsh web，刷新页面
+dsh plugin --profile web add github:Nagi-ovo/dsh-ads
+# 如果 dsh web 正在运行，重启后刷新页面
 ```
+
+可以运行 `dsh --profile web --dump-config` 确认插件已经进入最终配置。需要修改源码时，克隆仓库并在仓库目录运行 `dsh plugin --profile web add .`；构建产物已经提交，不需要额外构建。使用社区 [plugin-registry](https://github.com/dsh-external/plugin-registry) 的用户也可以从「设置 → 插件」安装。
 
 每个广告位都能在「设置 → 广告（非官方）」里单独关闭，选择会保留到下次启动。
 
