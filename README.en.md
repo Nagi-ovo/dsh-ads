@@ -1,5 +1,7 @@
 # dsh-ads
 
+![dsh-ads](assets/social-preview.jpg)
+
 <p align="center">
   <a href="README.md">简体中文</a> | <strong>English</strong>
 </p>
