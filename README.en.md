@@ -7,6 +7,10 @@
 </p>
 
 <p align="center">
+  <a href="https://dshfind.com/en/plugins/Nagi-ovo/dsh-ads?ref=badge"><img src="https://dshfind.com/api/card/Nagi-ovo/dsh-ads?lang=en" alt="dsh-ads on the dshfind plugin directory" width="440"></a>
+</p>
+
+<p align="center">
   <strong>Turn DeepSeek Harness into a 2005 web portal. Not even inference escapes the ads.</strong><br>
   The ads are fake. The plugins are real. Your odds of unlocking V4 Pro remain terrible.
 </p>

@@ -7,6 +7,10 @@
 </p>
 
 <p align="center">
+  <a href="https://dshfind.com/zh/plugins/Nagi-ovo/dsh-ads?ref=badge"><img src="https://dshfind.com/api/card/Nagi-ovo/dsh-ads?lang=zh" alt="dsh-ads 在 dshfind 插件目录上的展示卡" width="440"></a>
+</p>
+
+<p align="center">
   <strong>把 DeepSeek Harness 变成 2005 年门户网站。连 inference 都逃不过广告。</strong><br>
   广告是假的，插件是真的，抽到 V4 Pro 的希望也是真的渺茫。
 </p>
