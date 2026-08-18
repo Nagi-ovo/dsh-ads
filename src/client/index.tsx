@@ -93,12 +93,25 @@ function AdDockEntry({ sessionId, useLocale }: PropsRuntime<'conversation.input.
   const sponsored = useSponsoredAds(sessionId, locale)
   const builtins = BUILTIN_ADS_BY_LOCALE[locale]
   const creatives = useMemo(() => [...builtins, ...sponsored], [builtins, sponsored])
+  // The poster slot rotates through every locale's artwork, not just the
+  // active one: the joke is the parade of cheap game ads, and holding half of
+  // them back because the host UI is in the other language only makes the
+  // slot repeat itself sooner. The active locale leads so the first poster
+  // still reads as native.
+  const posters = useMemo(() => {
+    const tag = (from: AdLocale): readonly AdCreative[] =>
+      BUILTIN_POSTERS_BY_LOCALE[from].map((creative) => ({ ...creative, locale: from }))
+    const rest = (Object.keys(BUILTIN_POSTERS_BY_LOCALE) as AdLocale[])
+      .filter((other) => other !== locale)
+      .flatMap(tag)
+    return [...tag(locale), ...rest]
+  }, [locale])
   return (
     <>
       <AdLayer
         creatives={creatives}
         popups={BUILTIN_POPUPS_BY_LOCALE[locale]}
-        posters={BUILTIN_POSTERS_BY_LOCALE[locale]}
+        posters={posters}
         locale={locale}
         spawn={DEFAULT_SPAWN}
         hitboxPx={DEFAULT_HITBOX_PX}

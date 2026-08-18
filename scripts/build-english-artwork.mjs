@@ -225,6 +225,19 @@ try {
     + disclosure(380, 570, 'FAKE GAME · REAL WHALE')
   await render('posters/poster-fail-game.webp', 380, 570, gameBody)
 
+  // A second English poster. The bottom-left slot only rotates on a pool of
+  // two or more, so English stood still where Chinese cycled; this gives the
+  // English pool the same movement without touching the rotation rule.
+  const jackpotBody = image(art.jackpot, 380, 570, 'xMidYMid')
+    + '<defs><linearGradient id="jtop" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#2d005c" stop-opacity=".96"/><stop offset="1" stop-color="#2d005c" stop-opacity="0"/></linearGradient></defs><rect width="380" height="196" fill="url(#jtop)"/>'
+    + title(['SERVER OPENS', '10PM DEEP SEA'], { x: 190, y: 44, size: 27, line: 31, anchor: 'middle', fill: '#ffe600', stroke: '#3d0068', strokeWidth: 5 })
+    + '<rect x="46" y="150" width="124" height="38" rx="8" fill="#ff278f" stroke="#fff" stroke-width="3"/><text x="108" y="176" text-anchor="middle" font-family="Arial Black" font-size="14" fill="#fff">FREE VIP15</text>'
+    + '<rect x="210" y="150" width="124" height="38" rx="8" fill="#15c8ff" stroke="#fff" stroke-width="3"/><text x="272" y="176" text-anchor="middle" font-family="Arial Black" font-size="13" fill="#062b58">+88888 TOK</text>'
+    + title(['REAL BROS', 'SPIN HERE'], { x: 190, y: 470, size: 26, line: 30, anchor: 'middle', fill: '#fff', stroke: '#3d0068', strokeWidth: 5 })
+    + cta('SPIN NOW', 28, 508, 324, 48, '#ffe600', '#4d126d', 0.5)
+    + disclosure(380, 570, 'FAKE JACKPOT · REAL WHALE')
+  await render('posters/poster-whale-jackpot.webp', 380, 570, jackpotBody)
+
   await render('rewards/reward-jackpot.png', 1619, 971,
     image(art.jackpot, 1619, 971, 'xMidYMid')
     + '<defs><linearGradient id="veil" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#0a071a" stop-opacity=".94"/><stop offset=".55" stop-color="#26053e" stop-opacity=".62"/><stop offset="1" stop-color="#000" stop-opacity=".04"/></linearGradient></defs><rect width="1619" height="971" fill="url(#veil)"/>', 'png')
@@ -273,7 +286,7 @@ try {
 
   // The intermediates live beside the poster only long enough to feed ffmpeg.
   await Promise.all([videoBase, pointer, fail, play].map(path => rm(path)))
-  console.log('wrote 8 English banners + 5 popups + 1 animated poster + 1 reward artwork')
+  console.log('wrote 8 English banners + 5 popups + 2 posters (1 animated) + 1 reward artwork')
 } finally {
   await rm(work, { recursive: true, force: true })
 }

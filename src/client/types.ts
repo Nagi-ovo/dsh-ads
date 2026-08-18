@@ -51,6 +51,12 @@ export interface AdCreative {
    * horizontal and vertical banners share one tally.
    */
   readonly sponsor?: string
+  /**
+   * Language the artwork itself is drawn in, when it differs from the host UI.
+   * The poster slot rotates every locale's artwork, so the fake window chrome
+   * above a creative has to follow the creative, not the interface.
+   */
+  readonly locale?: AdLocale
 }
 
 /**

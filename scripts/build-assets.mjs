@@ -65,6 +65,7 @@ const EN_BANNER_META = {
 /** English fake-game takeover: the cursor always chooses the disastrous door. */
 const EN_POSTER_META = {
   'poster-fail-game': { alt: 'Only one percent can reach V4 Pro, but the player keeps choosing Delete System32' },
+  'poster-whale-jackpot': { alt: 'Deep sea server opens at 10pm, free VIP15 and 88888 tokens, real bros spin here' },
 }
 
 /** English corner pop-ups: fake antivirus, jackpot, and chumbox. */

@@ -61,12 +61,23 @@ const chromeStyle: CSSProperties = {
   gap: 6,
   height: CHROME_H,
   padding: '0 3px 0 8px',
-  background: 'linear-gradient(#8b1a1a, #5c0f0f)',
-  color: '#ffd76a',
   fontSize: 11,
   fontFamily: 'system-ui, sans-serif',
   fontWeight: 700,
   userSelect: 'none',
+}
+
+/**
+ * Window chrome painted to match the artwork it frames.
+ *
+ * The red-and-gold chrome is the Chinese browser-game look, and it clashed
+ * badly once the slot started rotating the English posters, which are drawn
+ * purple-and-yellow. The skin follows the creative for the same reason the
+ * title does.
+ */
+const CHROME_SKIN: Readonly<Record<AdLocale, { readonly background: string; readonly color: string; readonly border: string }>> = {
+  zh: { background: 'linear-gradient(#8b1a1a, #5c0f0f)', color: '#ffd76a', border: '#c9a227' },
+  en: { background: 'linear-gradient(#4d126d, #2d005c)', color: '#ffe600', border: '#a24bd8' },
 }
 
 /**
@@ -112,6 +123,7 @@ export function GamePoster(props: GamePosterProps) {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const settingsRef = useRef<HTMLSpanElement | null>(null)
   const hit = resolveHitbox(seed, POSTER_HITBOX_PX)
+  const skin = CHROME_SKIN[creative.locale ?? locale]
   const height = POSTER_WIDTH * (creative.height / creative.width)
   const drag = useDrag(anchor, onMove, { width: POSTER_WIDTH, height: (collapsed ? 0 : height) + CHROME_H })
   // No retract timer: it stays until the user finds the real hitbox.
@@ -158,15 +170,19 @@ export function GamePoster(props: GamePosterProps) {
         // Suppressed mid-drag: a transition on a dragged element lags the
         // cursor and feels broken.
         transition: drag.dragging ? 'none' : 'transform 520ms cubic-bezier(0.16, 1, 0.3, 1)',
-        border: '2px solid #c9a227',
+        border: `2px solid ${skin.border}`,
         pointerEvents: 'auto',
+        // Grab anywhere. Only the title bar used to drag, which stranded the
+        // poster once it was pushed far enough that the sliver still on screen
+        // was artwork rather than chrome.
+        cursor: drag.dragging ? 'grabbing' : undefined,
       }}
+      onPointerDown={drag.onPointerDown}
     >
       <div
-        style={{ ...chromeStyle, cursor: drag.dragging ? 'grabbing' : 'grab' }}
-        onPointerDown={drag.onPointerDown}
+        style={{ ...chromeStyle, background: skin.background, color: skin.color, cursor: drag.dragging ? 'grabbing' : 'grab' }}
       >
-        <span>{locale === 'en' ? '★ ACTUAL GAMEPLAY ★' : '★ 火爆开服 ★'}</span>
+        <span>{(creative.locale ?? locale) === 'en' ? '★ ACTUAL GAMEPLAY ★' : '★ 火爆开服 ★'}</span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <span style={{ position: 'relative', display: 'flex' }} ref={settingsRef}>
             <button
