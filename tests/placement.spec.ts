@@ -7,14 +7,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import {
-  FALLBACK_SAFE_AREA,
-  layout,
-  looksLikeSidebar,
-  resolvePlacement,
-  type SafeArea,
-  type Viewport,
-} from '../src/client/placement.ts'
+import { FALLBACK_SAFE_AREA, layout, looksLikeSidebar, resolvePlacement, type SafeArea, type Viewport, pickComposer, type RectLike } from '../src/client/placement.ts'
 import type { AdCreative, PlacedAd } from '../src/client/types.ts'
 
 const viewport: Viewport = { width: 1600, height: 900 }
@@ -176,5 +169,37 @@ describe('looksLikeSidebar', () => {
     expect(looksLikeSidebar({ left: 0, width: 900, height: 846 }, VIEWPORT_H)).toBe(false)
     expect(looksLikeSidebar({ left: 0, width: 200, height: 200 }, VIEWPORT_H)).toBe(false)
     expect(looksLikeSidebar({ left: 320, width: 200, height: 846 }, VIEWPORT_H)).toBe(false)
+  })
+})
+
+describe('pickComposer', () => {
+  const rect = (left: number, top: number, width: number, height: number): RectLike =>
+    ({ left, top, width, height, right: left + width, bottom: top + height })
+
+  // The shape of the reported bug: the shell's sidebar carries a session
+  // search box that sits far above the composer. Taking the topmost input
+  // picked that one, which collapsed the conversation column onto the sidebar
+  // and let both gutters draw over the transcript.
+  it('ignores the sidebar search and takes the composer', () => {
+    const search = rect(24, 120, 220, 32)
+    const composer = rect(420, 900, 600, 96)
+    expect(pickComposer([search, composer], 300)).toBe(composer)
+    expect(pickComposer([composer, search], 300)).toBe(composer)
+  })
+
+  it('takes the lowest input when several sit in the column', () => {
+    const editing = rect(420, 400, 600, 80)
+    const composer = rect(420, 900, 600, 96)
+    expect(pickComposer([composer, editing], 0)).toBe(composer)
+  })
+
+  it('skips zero-sized and sidebar-contained candidates', () => {
+    expect(pickComposer([rect(420, 900, 600, 0)], 0)).toBeUndefined()
+    expect(pickComposer([rect(420, 900, 0, 96)], 0)).toBeUndefined()
+    expect(pickComposer([rect(10, 900, 200, 32)], 300)).toBeUndefined()
+  })
+
+  it('returns undefined when there is nothing to pick', () => {
+    expect(pickComposer([], 0)).toBeUndefined()
   })
 })

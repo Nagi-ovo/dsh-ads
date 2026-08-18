@@ -55,6 +55,43 @@ const MAX_COLUMN_WIDTH = 400
  */
 const MIN_COLUMN_WIDTH = 150
 
+/** The subset of a DOMRect this module needs. */
+export interface RectLike {
+  readonly left: number
+  readonly right: number
+  readonly top: number
+  readonly bottom: number
+  readonly width: number
+  readonly height: number
+}
+
+/**
+ * Pick the conversation composer out of every text input on screen.
+ *
+ * The composer anchors the whole layout: it fixes the bottom exclusion band
+ * and, being centred on the reading column, both column edges. Choosing it
+ * wrongly does not misplace one banner, it moves the gutters onto the
+ * transcript.
+ *
+ * Two rules, and the shell needs both. The sidebar has its own search input,
+ * so anything ending at or before the sidebar's right edge is disqualified
+ * outright. Among what remains the composer is the lowest thing on screen —
+ * an editable message bubble mid-transcript sits above it, never below.
+ *
+ * @param rects - client rects of every candidate input.
+ * @param sidebarRight - the sidebar's right edge, or 0 when there is none.
+ * @returns the composer's rect, or undefined when no candidate qualifies.
+ */
+export function pickComposer(rects: readonly RectLike[], sidebarRight: number): RectLike | undefined {
+  let best: RectLike | undefined
+  for (const rect of rects) {
+    if (rect.height === 0 || rect.width === 0) continue
+    if (rect.right <= sidebarRight) continue
+    if (best === undefined || rect.bottom > best.bottom) best = rect
+  }
+  return best
+}
+
 /** Gap between banners and against the gutter edges, in CSS pixels. */
 const GAP = 8
 

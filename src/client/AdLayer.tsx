@@ -23,7 +23,7 @@ import { retireAds, useRetired } from './retire.ts'
 import { isSolo, useAdSettings } from './settings.ts'
 import { usePersisted, type Anchor } from './persist.ts'
 import { repoFromHref } from './star-check.ts'
-import { FALLBACK_SAFE_AREA, layout, looksLikeSidebar, resolvePlacement, type SafeArea, type Viewport } from './placement.ts'
+import { FALLBACK_SAFE_AREA, layout, looksLikeSidebar, pickComposer, resolvePlacement, type SafeArea, type Viewport } from './placement.ts'
 import { pruneCooling, targetCount, weightedPick, type SpawnConfig } from './schedule.ts'
 import type { AdCreative, AdLocale, PlacedAd } from './types.ts'
 
@@ -87,6 +87,17 @@ export interface AdLayerProps {
 const SIDEBAR_SCAN_DEPTH = 5
 
 /**
+ * How deep to descend when looking for the header.
+ *
+ * Deeper than the sidebar scan because it has to be: the shell renders its
+ * `<header>` eight levels below `<body>`, so the sidebar's depth of 5 never
+ * reached it and every header measurement silently returned zero. That put
+ * `safe.top` back on its 56px fallback and let both gutters start above the
+ * view tabs, covering them.
+ */
+const HEADER_SCAN_DEPTH = 12
+
+/**
  * Slack added either side of the composer to derive the conversation column.
  * The transcript's own bubbles sit slightly wider than the composer card, so
  * the column has to be a touch wider than what is measured.
@@ -135,12 +146,21 @@ const HEADER_BAND = 140
  */
 function measureHeader(viewport: Viewport, columnLeft: number): number {
   let bottom = 0
-  const visit = (node: Element, depth: number) => {
-    if (depth > SIDEBAR_SCAN_DEPTH) return
-    const rect = node.getBoundingClientRect()
+  const consider = (rect: DOMRect) => {
     const wide = rect.width > viewport.width * 0.3
     const shallow = rect.height > 0 && rect.height < 90 && rect.bottom < HEADER_BAND
     if (wide && shallow && rect.left <= columnLeft) bottom = Math.max(bottom, rect.bottom)
+  }
+  // Semantics first. The shell's class names are per-build hashes, but it does
+  // render a real `<header>` and a real `role="tablist"`, and the tab strip is
+  // exactly the thing a banner must not cover — it is the only control up
+  // there. Geometry alone missed both, and missing them is not a near-miss:
+  // it silently yields zero, which reads as "no header" rather than as a
+  // failed measurement.
+  for (const node of document.querySelectorAll('header, [role="tablist"]')) consider(node.getBoundingClientRect())
+  const visit = (node: Element, depth: number) => {
+    if (depth > HEADER_SCAN_DEPTH) return
+    consider(node.getBoundingClientRect())
     for (const child of node.children) visit(child, depth + 1)
   }
   for (const child of document.body.children) visit(child, 1)
@@ -203,20 +223,21 @@ function useSafeArea(viewport: Viewport): SafeArea {
   const [safe, setSafe] = useState<SafeArea>(FALLBACK_SAFE_AREA)
   useEffect(() => {
     const measure = () => {
+      const left = measureSidebar(viewport.height)
       // The composer is both the bottom exclusion and the width reference for
       // the conversation column: it is centred on the column and always
       // present, which no transcript element is.
+      //
+      // Picking it needs care. The shell has other text inputs — the sidebar's
+      // session search above all — and taking the topmost match found that one
+      // instead, which collapsed the column onto the sidebar and let the
+      // gutters draw straight over the transcript. The composer is the input
+      // sitting lowest on screen, and it is never inside the sidebar.
       const inputs = document.querySelectorAll('textarea, [contenteditable="true"]')
-      let composer: DOMRect | undefined
-      for (const node of inputs) {
-        const rect = node.getBoundingClientRect()
-        if (rect.height === 0) continue
-        if (composer === undefined || rect.top < composer.top) composer = rect
-      }
+      const composer = pickComposer([...inputs].map((node) => node.getBoundingClientRect()), left)
       const bottom = composer === undefined
         ? FALLBACK_SAFE_AREA.bottom
         : Math.max(FALLBACK_SAFE_AREA.top, viewport.height - composer.top + 12)
-      const left = measureSidebar(viewport.height)
       // A column narrower than the composer would let banners overlap the
       // transcript, so pad the measured card outward a little.
       const columnLeft = composer === undefined ? 0 : Math.max(left, composer.left - COLUMN_PAD)
@@ -667,6 +688,7 @@ export function AdLayer(props: AdLayerProps) {
           onClose={() => setPoster(undefined)}
           onMisfire={() => setTakeover(poster)}
           controls={controls}
+          leftFloor={safe.left}
         />
       )}
       {takeover !== undefined && (

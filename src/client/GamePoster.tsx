@@ -38,6 +38,8 @@ export interface GamePosterProps {
   readonly seed: number
   /** Whether to chime on arrival. */
   readonly chime: boolean
+  /** Leftmost the poster may be dragged; the host sidebar's right edge. */
+  readonly leftFloor?: number
   /** Current position. */
   readonly anchor: Anchor
   /** Called with a new position when the user drags it. */
@@ -125,7 +127,7 @@ export function GamePoster(props: GamePosterProps) {
   const hit = resolveHitbox(seed, POSTER_HITBOX_PX)
   const skin = CHROME_SKIN[creative.locale ?? locale]
   const height = POSTER_WIDTH * (creative.height / creative.width)
-  const drag = useDrag(anchor, onMove, { width: POSTER_WIDTH, height: (collapsed ? 0 : height) + CHROME_H })
+  const drag = useDrag(anchor, onMove, { width: POSTER_WIDTH, height: (collapsed ? 0 : height) + CHROME_H }, props.leftFloor ?? 0)
   // No retract timer: it stays until the user finds the real hitbox.
   useEffect(() => {
     if (chime) playRing()

@@ -35,12 +35,17 @@ export interface DragHandle {
  * @param anchor - current position.
  * @param onMove - called with the new position when a drag ends.
  * @param size - the widget's rendered size, for clamping.
+ * @param leftFloor - leftmost the widget may sit, in CSS pixels. The host's
+ * sidebar lives here; parking an ad on top of the session list covers real
+ * navigation rather than the transcript, which is the one thing the layer is
+ * not allowed to do. Defaults to 0 for hosts with no sidebar.
  * @returns handlers and state for the drag handle.
  */
 export function useDrag(
   anchor: Anchor,
   onMove: (next: Anchor) => void,
   size: { width: number; height: number },
+  leftFloor = 0,
 ): DragHandle {
   const [dragging, setDragging] = useState(false)
   const origin = useRef<{ x: number; y: number; left: number; bottom: number } | undefined>(undefined)
@@ -63,8 +68,9 @@ export function useDrag(
       const dy = event.clientY - from.y
       if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) travelled.current = true
       // Keep at least a sliver on screen on every edge — a widget dragged
-      // fully off-screen is indistinguishable from one that is gone.
-      const left = Math.max(40 - size.width, Math.min(innerWidth - 40, from.left + dx))
+      // fully off-screen is indistinguishable from one that is gone — and
+      // never let it settle over the sidebar.
+      const left = Math.max(leftFloor, Math.min(innerWidth - 40, from.left + dx))
       // Bottom-anchored, so downward pointer movement *decreases* it.
       const bottom = Math.max(0, Math.min(innerHeight - size.height, from.bottom - dy))
       onMove({ left, bottom })
@@ -76,7 +82,24 @@ export function useDrag(
       removeEventListener('pointermove', onMoveEvent)
       removeEventListener('pointerup', onUp)
     }
-  }, [dragging, onMove, size.width, size.height])
+  }, [dragging, onMove, size.width, size.height, leftFloor])
+
+  // Clamping on drag alone is not enough: a position saved before the floor
+  // moved — a persisted anchor from an older build, or the sidebar expanding
+  // under a widget parked to its left — stays out of bounds forever, because
+  // nothing re-checks it until the user drags again. Re-clamp whenever the
+  // bounds themselves change, which also covers window resizes.
+  useEffect(() => {
+    const settle = () => {
+      const at = latest.current
+      const left = Math.max(leftFloor, Math.min(innerWidth - 40, at.left))
+      const bottom = Math.max(0, Math.min(Math.max(0, innerHeight - size.height), at.bottom))
+      if (left !== at.left || bottom !== at.bottom) onMove({ left, bottom })
+    }
+    settle()
+    addEventListener('resize', settle)
+    return () => removeEventListener('resize', settle)
+  }, [leftFloor, onMove, size.height])
 
   const moved = useCallback(() => travelled.current, [])
   return { onPointerDown, dragging, moved }
