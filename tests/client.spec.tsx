@@ -472,6 +472,43 @@ describe('AdLayer', () => {
     expect(banners().length).toBeGreaterThan(0)
   })
 
+  it('clears the whale poster from the host settings switch, not only the in-poster menu', () => {
+    // Gutter banners drop because their render path reads the switch. The
+    // poster is keyed off live state, so a settings-page write that never
+    // reaches the poster's onChange used to leave it on screen.
+    const posters: readonly AdCreative[] = [
+      { id: 'first', width: 300, height: 480, shape: 'tall', weight: 1, alt: '海报甲', src: 'data:,' },
+    ]
+    act(() => {
+      root.render(
+        <AdLayer
+          creatives={[]}
+          popups={[]}
+          posters={posters}
+          spawn={FAST}
+          hitboxPx={7}
+          popupFirstDelayMs={0}
+          posterFirstDelayMs={1000}
+          posterRotateMs={0}
+          respawnMs={RESPAWN_MS}
+          speedFirstDelayMs={0}
+          scareDelayMs={0}
+          scareHref="https://github.com/example-owner/example-repo"
+          chime={false}
+        />,
+      )
+    })
+    tick(1000)
+    expect(document.querySelector<HTMLImageElement>('img')?.alt).toBe('海报甲')
+    flipSwitch('贪玩蓝鲸')
+    expect(document.querySelector('img')).toBeNull()
+    tick(30_000)
+    expect(document.querySelector('img')).toBeNull()
+    flipSwitch('贪玩蓝鲸')
+    tick(1000)
+    expect(document.querySelector<HTMLImageElement>('img')?.alt).toBe('海报甲')
+  })
+
   it('remembers which placements are switched off', () => {
     // The whole point of moving these into storage: a gutter switched off has
     // to stay off, including across the layer being torn down and remounted.

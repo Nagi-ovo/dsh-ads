@@ -391,6 +391,25 @@ export function AdLayer(props: AdLayerProps) {
     setTakeover(undefined)
   }, [locale])
 
+  // The host settings page writes the same stored object as the poster's
+  // menu, but it cannot call onChange. Spawn effects only skip the *next*
+  // tick, so an already-drawn poster/popup/scare/speed would stay up until
+  // something else cleared it. Drop live instances here so either writer
+  // has the same "off means gone" contract.
+  useEffect(() => {
+    if (!settings.gutter) setAds([])
+    if (!settings.popup) {
+      setPopup(undefined)
+      popupRound.current = 0
+    }
+    if (!settings.scare) setScare(undefined)
+    if (!settings.speed) setSpeed(undefined)
+    if (!settings.poster) {
+      setPoster(undefined)
+      posterRound.current = 0
+    }
+  }, [settings.gutter, settings.popup, settings.scare, settings.speed, settings.poster])
+
   // The dynamic tier arrives after a fetch, by which time the first tick has
   // already filled every slot from the built-ins alone — and a full layer
   // never spawns again, so community plugins would never reach the gutters at
