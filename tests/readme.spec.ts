@@ -10,8 +10,8 @@ const readmes = [
 
 const localShowcaseAssets = [
   'assets/screenshot.webp',
-  'assets/english-mode.png',
-  'assets/reward-gate.png',
+  'assets/english-mode.webp',
+  'assets/reward-gate.webp',
   'assets/settings.webp',
   'assets/poster-blue-whale-small.gif',
   'assets/startup-score.png',

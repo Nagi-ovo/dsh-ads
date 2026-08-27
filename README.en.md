@@ -15,7 +15,7 @@
   The ads are fake. The plugins are real. Your odds of unlocking V4 Pro remain terrible.
 </p>
 
-![English mode with Imagegen whale plugin ads, fake antivirus warnings, a fake game, and the DSH message center](assets/english-mode.png)
+![English mode with Imagegen whale plugin ads, fake antivirus warnings, a fake game, and the DSH message center](assets/english-mode.webp)
 
 `dsh-ads` fills the gutters, conversation, inference, and bottom corner with fictional advertising. A rewarded ad can appear to pause inference while the model keeps working. The rest of the answer and any tool calls become visible when the ad ends.
 
@@ -25,7 +25,7 @@ The sponsored slots promote more than this repository. Public GitHub projects ta
 
 Change Settings → Language and the current page immediately swaps the artwork, copy, and interactions without a reload. Chinese mode has browser games, a God of Wealth whale, and endless near-wins. Its two Blue Whale game posters rotate every 20 seconds. English mode has fake antivirus, weird tricks, and actual gameplay*.
 
-![The Chinese V4 Pro prize wheel with the God of Wealth whale and four unlock progress bars](assets/reward-gate.png)
+![The Chinese V4 Pro prize wheel with the God of Wealth whale and four unlock progress bars](assets/reward-gate.webp)
 
 ![Chinese mode with gutter ads, a sponsored plugin, the fake game, and DSH message center](assets/screenshot.webp)
 

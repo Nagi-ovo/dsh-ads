@@ -1,1 +1,7 @@
 node_modules/
+
+# Imagegen / video masters. Runtime ads are the WebP files next to these.
+/assets/sources/
+/assets/en/sources/*.png
+/assets/en/sources/*.gif
+/assets/en/sources/*.mp4

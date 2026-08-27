@@ -1,6 +1,6 @@
 # English artwork sources
 
-These PNG files are the original imagegen outputs. `scripts/build-english-artwork.mjs` uses them as illustration sources and adds exact English text at deterministic canvas sizes. Do not replace these originals with screenshots or recompressed derivatives.
+These PNG files are the original imagegen outputs. They are **not shipped in git** (they were most of a 100 MB clone). Keep a local copy in this directory (gitignored), or set `DSH_ADS_EN_SOURCES`, then run `scripts/build-english-artwork.mjs`. Do not replace the originals with screenshots or recompressed derivatives.
 
 ## `jackpot-orca-original.png`
 

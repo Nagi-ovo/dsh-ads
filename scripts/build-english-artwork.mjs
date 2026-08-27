@@ -3,9 +3,11 @@
  *
  * Image generation supplies the characters and scenes; SVG supplies exact
  * copy and exact canvases, so a 46px strip never depends on a model spelling
- * tiny text correctly. Runtime WebPs are derivatives. The four source PNGs
- * under `assets/en/sources/` remain byte-for-byte imagegen outputs.
+ * tiny text correctly. Runtime WebPs are what the clone ships. Source PNGs
+ * stay out of git: local `assets/en/sources/`, `DSH_ADS_EN_SOURCES`, or
+ * `../dsh-ads-assets/en/sources`.
  */
+import { existsSync } from 'node:fs'
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -28,9 +30,31 @@ function xml(value) {
     .replace(/"/g, '&quot;')
 }
 
+/**
+ * Original imagegen PNGs are not in the clone. Prefer a local gitignored
+ * copy, then an env override, then the sibling assets dump.
+ * @returns directory that contains the English source PNGs.
+ */
+function resolveEnSources() {
+  const candidates = [
+    process.env.DSH_ADS_EN_SOURCES,
+    join(en, 'sources'),
+    join(root, '..', 'dsh-ads-assets', 'en', 'sources'),
+  ].filter((dir) => typeof dir === 'string' && dir.length > 0)
+  for (const dir of candidates) {
+    if (existsSync(join(dir, 'jackpot-orca-original.png'))) return dir
+  }
+  throw new Error(
+    'English source PNGs not found. Put them in gitignored assets/en/sources, '
+    + 'or set DSH_ADS_EN_SOURCES.',
+  )
+}
+
+const enSources = resolveEnSources()
+
 /** Read one preserved source as an embedded PNG URL. */
 async function source(name) {
-  const body = await readFile(join(en, 'sources', name))
+  const body = await readFile(join(enSources, name))
   return `data:image/png;base64,${body.toString('base64')}`
 }
 
@@ -238,7 +262,7 @@ try {
     + disclosure(380, 570, 'FAKE JACKPOT · REAL WHALE')
   await render('posters/poster-whale-jackpot.webp', 380, 570, jackpotBody)
 
-  await render('rewards/reward-jackpot.png', 1619, 971,
+  await render('rewards/reward-jackpot.webp', 1619, 971,
     image(art.jackpot, 1619, 971, 'xMidYMid')
     + '<defs><linearGradient id="veil" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#0a071a" stop-opacity=".94"/><stop offset=".55" stop-color="#26053e" stop-opacity=".62"/><stop offset="1" stop-color="#000" stop-opacity=".04"/></linearGradient></defs><rect width="1619" height="971" fill="url(#veil)"/>', 'png')
 
