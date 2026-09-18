@@ -7,7 +7,7 @@
  */
 import type { UserConfig } from 'tsdown'
 
-const PLUGIN_ID = '@dsh-external/dsh-ads'
+const PLUGIN_ID = '@nagi-ovo/dsh-ads'
 
 /** Module specifiers the dsh web shell shares into its frozen module table. */
 const PLATFORM_MODULES = [

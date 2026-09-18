@@ -1,8 +1,7 @@
 {
-  "name": "@dsh-external/dsh-ads",
+  "name": "@nagi-ovo/dsh-ads",
   "description": "DSH ad-infestation plugin: localized Chinese portal ads and English scam-ad parody, with fake pop-ups, a jackpot wheel, rewarded inference ads, and fake-game animation.",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -28,7 +27,19 @@
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.client.json",
     "test": "vitest run",
     "check": "pnpm run typecheck && pnpm run test && pnpm run build",
-    "catalog": "node scripts/build-catalog.mjs"
+    "catalog": "node scripts/build-catalog.mjs",
+    "prepublishOnly": "pnpm run build"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Nagi-ovo/dsh-ads.git"
+  },
+  "homepage": "https://github.com/Nagi-ovo/dsh-ads#readme",
+  "bugs": {
+    "url": "https://github.com/Nagi-ovo/dsh-ads/issues"
   },
   "dsh": {
     "bundle": {

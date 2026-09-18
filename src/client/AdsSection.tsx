@@ -175,7 +175,7 @@ export function AdsSection({ locale = 'zh' }: { readonly locale?: AdLocale }) {
         <div>
           {locale === 'en' ? 'This page is provided by the community plugin ' : '本页由社区插件 '}
           <a href={REPO_URL} target="_blank" rel="noreferrer noopener" style={linkStyle}>
-            @dsh-external/dsh-ads
+            @nagi-ovo/dsh-ads
           </a>{' '}
           {locale === 'en' ? ', not by DeepSeek.' : ' 提供，非 DeepSeek 官方功能。'}
         </div>

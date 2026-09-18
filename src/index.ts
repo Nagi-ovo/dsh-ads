@@ -11,7 +11,7 @@
  * A surface without the browser half simply has no ad layer, which is the
  * correct degradation for TUI, ACP, and headless.
  *
- * @module @dsh-external/dsh-ads
+ * @module @nagi-ovo/dsh-ads
  */
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
