@@ -1,7 +1,7 @@
 /**
  * The in-transcript ad.
  *
- * Registered on the chat view's turn-tail chain, so it renders *inside* the
+ * Registered on the chat view's turn tail, so it renders *inside* the
  * conversation — between a closing assistant message's body and its action
  * footer — rather than floating over it. This is the feed ad: content, ad,
  * content, ad, exactly the rhythm of a Chinese content portal, and the reason
@@ -16,7 +16,9 @@
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: pulls the `conversation.chat.turnTail` SlotMap declaration.
-import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
+// Type-only: pulls the `sessionId` standard prop merge.
+import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type { AdCreative, AdLocale } from './types.ts'
 import { feedAd } from './feed.ts'
 import { resolveHitbox, VISUAL_CLOSE_PX } from './hitbox.ts'
@@ -32,6 +34,18 @@ export const INLINE_EVERY_N_TURNS = 2
  */
 export function turnCarriesAd(seq: number): boolean {
   return seq > 0 && seq % INLINE_EVERY_N_TURNS === 0
+}
+
+/**
+ * Chain selector for the turn tail on dsh 0.1.5 and earlier: decline every
+ * turn that does not carry an ad, so the chain falls through to whatever else
+ * wants the seat. An all-declined chain renders nothing at all.
+ *
+ * @param owner - the turn-tail owner currency.
+ * @returns the matched turn's seq, or undefined to decline this turn.
+ */
+export function selectInlineAd(owner: { seq: number }): number | undefined {
+  return turnCarriesAd(owner.seq) ? owner.seq : undefined
 }
 
 /** Business props injected by the registration, beside the owner currency. */

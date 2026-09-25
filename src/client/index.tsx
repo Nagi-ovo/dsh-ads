@@ -5,27 +5,31 @@
  *   gate. That entry renders nothing at the dock — it only supplies a React
  *   lifecycle scoped to an open session. Visible output is portalled onto
  *   `document.body` or beside the active transcript row.
- * - The chat view's turn-tail chain mounts the feed ad *inside* the
- *   transcript, so the reading column carries inventory without anything
- *   floating over it.
+ * - The chat view's turn tail mounts the feed ad *inside* the transcript, so
+ *   the reading column carries inventory without anything floating over it.
  * - The settings dialog gets a page of its own, which is where the placement
  *   switches actually live; the in-ad ⚙ menu is a joke, not a control panel.
  */
 
 import { useMemo } from 'react'
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type { HostObservable, InjectFace, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: pulls the locale service's Context merge (ctx.locale).
 import type { LocaleSnapshot } from '@deepseek-ai/dsh-client-locale/client'
-// Type-only: pulls the `conversation.input.dock` and `conversation.chat.turnTail`
-// SlotMap declarations.
+// Type-only: pulls the `ctx.slots` Context merge.
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+// Type-only: pulls the `sessionId` standard prop merge.
+import type {} from '@deepseek-ai/dsh-client-ui-session/client'
+// Type-only: pulls the `conversation.input.dock` SlotMap declaration.
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+// Type-only: pulls the `conversation.chat.turnTail` SlotMap declaration.
+import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
 // Type-only: pulls the `settings.section` SlotMap declaration.
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import { AdLayer } from './AdLayer.tsx'
 import { AdsSection } from './AdsSection.tsx'
 import { InferenceRewardGate } from './InferenceRewardGate.tsx'
-import { InlineAd, turnCarriesAd } from './InlineAd.tsx'
+import { InlineAd, selectInlineAd, turnCarriesAd } from './InlineAd.tsx'
 import {
   BUILTIN_ADS_BY_LOCALE, BUILTIN_POPUPS_BY_LOCALE, BUILTIN_POSTERS_BY_LOCALE, BUILTIN_REWARDS_BY_LOCALE,
 } from './builtin-ads.ts'
@@ -138,29 +142,52 @@ function AdsSectionEntry({ useLocale }: PropsRuntime<'settings.section'> & Local
   return <AdsSection locale={useLocale(snapshot => adLocale(snapshot.active))} />
 }
 
+/** Turn-tail props as the host mounts them. */
+type InlineAdEntryProps = PropsRuntime<'conversation.chat.turnTail'> & LocaleInjected
+
 /**
- * Transcript entry that resolves its creative pool from the current locale.
+ * Transcript entry. A list turn tail (dsh 0.1.6+) mounts every entry on every
+ * turn and never consults {@link selectInlineAd}, so the entry gates itself;
+ * on a chain turn tail the selector has already declined these turns and the
+ * check is a no-op. The gate sits outside {@link LocalizedInlineAd} so the
+ * early return never skips a hook.
+ * @param props - turn owner props plus the injected locale selector.
+ * @returns localized in-transcript advertisement, or null on an ad-free turn.
+ */
+function InlineAdEntry(props: InlineAdEntryProps) {
+  return turnCarriesAd(props.seq) ? <LocalizedInlineAd {...props} /> : null
+}
+
+/**
+ * Resolve the creative pool from the current locale.
  * @param props - turn owner props plus the injected locale selector.
  * @returns localized in-transcript advertisement.
  */
-function InlineAdEntry({ useLocale, ...props }: PropsRuntime<'conversation.chat.turnTail'> & LocaleInjected) {
+function LocalizedInlineAd({ useLocale, ...props }: InlineAdEntryProps) {
   const locale = useLocale(snapshot => adLocale(snapshot.active))
   return <InlineAd {...props} pool={BUILTIN_ADS_BY_LOCALE[locale]} locale={locale} />
 }
 
 /**
- * Chain selector for the turn tail: decline every turn that does not carry an
- * ad, so the chain falls through to whatever else wants the seat.
- *
- * Declining by returning `undefined` (rather than mounting a component that
- * returns null) is what the chain contract asks for — an all-declined chain
- * renders nothing at all.
- *
- * @param owner - the turn-tail owner currency.
- * @returns the matched turn's seq, or undefined to decline this turn.
+ * Turn-tail registration valid on both slot shapes the host has shipped. dsh
+ * 0.1.5 and earlier declare the turn tail as a chain, whose register requires
+ * `select` and orders by `priority`; 0.1.6 onward declare a list, whose
+ * register requires `id` and orders by `order`. Each register validates only
+ * its own kind's field and stores the rest untouched, so one options object
+ * carries both. The high `priority` and `order` put the ad after every other
+ * entry that wants the seat.
+ * @param ctx - client root context.
+ * @returns the register options.
  */
-function selectInlineAd(owner: { seq: number }): number | undefined {
-  return turnCarriesAd(owner.seq) ? owner.seq : undefined
+function turnTailOptions(ctx: ClientContext) {
+  return {
+    name: 'conversation.chat.turnTail',
+    id: 'dsh-ads-inline',
+    order: 1000,
+    priority: 1000,
+    select: selectInlineAd,
+    inject: () => ({ hooks: { locale: ctx.locale } }),
+  } as const
 }
 
 /**
@@ -168,8 +195,7 @@ function selectInlineAd(owner: { seq: number }): number | undefined {
  *
  * Waiting on each hole's declaration mirrors the official registrants: entry
  * application order is loader-driven, and a direct register racing the
- * declaration fails boot. The turn-tail entry takes a high `priority` so any
- * other registrant that wants that seat outranks an advertisement.
+ * declaration fails boot.
  *
  * @param ctx - client root context.
  */
@@ -195,13 +221,5 @@ export function apply(ctx: ClientContext): void {
     },
     AdsSectionEntry,
   ))
-  ctx.slots.inject('conversation.chat.turnTail', () => ctx.slots.register(
-    {
-      name: 'conversation.chat.turnTail',
-      priority: 1000,
-      select: selectInlineAd,
-      inject: () => ({ hooks: { locale: ctx.locale } }),
-    },
-    InlineAdEntry,
-  ))
+  ctx.slots.inject('conversation.chat.turnTail', () => ctx.slots.register(turnTailOptions(ctx), InlineAdEntry))
 }
