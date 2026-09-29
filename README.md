@@ -56,7 +56,7 @@ dsh plugin --profile web add @nagi-ovo/dsh-ads
 
 也可以从 GitHub 安装：`dsh plugin --profile web add github:Nagi-ovo/dsh-ads`。可以运行 `dsh --profile web --dump-config` 确认插件已经进入最终配置。需要修改源码时，克隆仓库并在仓库目录运行 `dsh plugin --profile web add .`；构建产物已经提交，不需要额外构建。使用社区 [plugin-registry](https://github.com/dsh-external/plugin-registry) 的用户也可以从「设置 → 插件」安装。
 
-兼容 DSH 0.1.1-rc.2 到 0.1.7-rc.2。
+兼容 DSH 0.1.1-rc.2 到 0.2.0-rc.2。
 
 每个广告位都能在「设置 → 广告（非官方）」里单独关闭，选择会保留到下次启动。
 
