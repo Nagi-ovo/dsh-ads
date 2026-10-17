@@ -53,6 +53,6 @@ jobs:
         if: github.ref_type == 'tag'
         run: npm publish
 
-      - name: Publish (dry run)
+      - name: Pack (dry run)
         if: github.ref_type != 'tag'
-        run: npm publish --dry-run
+        run: npm pack --dry-run
