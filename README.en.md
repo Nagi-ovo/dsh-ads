@@ -47,7 +47,9 @@ Change Settings → Language and the current page immediately swaps the artwork,
 
 ## Install
 
-Install from npm into DSH's `web` profile:
+**Desktop:** open **插件 (Plugins)** in the sidebar, choose **添加插件 (Add plugin)**, enter `@nagi-ovo/dsh-ads`, then restart DSH. You can also run `dsh plugin --profile desktop add @nagi-ovo/dsh-ads`.
+
+**Web:** install from npm into the `web` profile:
 
 ```sh
 dsh plugin --profile web add @nagi-ovo/dsh-ads
@@ -56,7 +58,7 @@ dsh plugin --profile web add @nagi-ovo/dsh-ads
 
 GitHub also works: `dsh plugin --profile web add github:Nagi-ovo/dsh-ads`. Run `dsh --profile web --dump-config` to confirm that the plugin is present in the final configuration. For local development, clone the repository and run `dsh plugin --profile web add .` from its root; committed build output means no separate build step is required. Users of the community [plugin-registry](https://github.com/dsh-external/plugin-registry) can also install it from Settings → Plugins.
 
-Compatible with DSH 0.1.1-rc.2 through 0.2.0-rc.2.
+Compatible with DSH 0.1.1-rc.2 through 0.2.2-rc.1.
 
 Every placement has its own switch under Settings → Ads (Unofficial). Choices persist across restarts.
 

@@ -216,6 +216,15 @@ function pressNuke(): void {
 }
 
 describe('AdLayer', () => {
+  it('keeps its layer zero-sized so it cannot cancel Desktop window drag regions', () => {
+    mount()
+    act(() => { vi.advanceTimersByTime(RESPAWN_MS) })
+    const layer = document.querySelector<HTMLElement>('[data-dsh-anti-ads]')
+    expect(layer?.style.width).toBe('0px')
+    expect(layer?.style.height).toBe('0px')
+    expect(layer?.style.inset).toBe('')
+  })
+
   it('rotates the bottom-left poster automatically while it remains open', () => {
     const posters: readonly AdCreative[] = [
       { id: 'first', width: 300, height: 480, shape: 'tall', weight: 1, alt: '海报甲', src: 'data:,' },
