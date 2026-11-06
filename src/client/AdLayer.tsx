@@ -623,8 +623,14 @@ export function AdLayer(props: AdLayerProps) {
       // Any DOM scrubber that skips subtrees under this attribute skips ours too.
       data-dsh-anti-ads
       style={{
+        // Zero-sized on purpose: DSH Desktop's macOS window drag regions are
+        // composed by geometry, so a full-window box here would cancel them all.
+        // Every child is `position: fixed` and keeps its own place.
         position: 'fixed',
-        inset: 0,
+        top: 0,
+        left: 0,
+        width: 0,
+        height: 0,
         zIndex: 2_147_400_000,
         pointerEvents: 'none',
         // Hidden rather than unmounted while a dialog is up: tearing the layer
