@@ -47,7 +47,9 @@
 
 ## 安装
 
-推荐用 npm 装到 DSH 的 `web` profile：
+**桌面端**：打开侧边栏的「插件」→「添加插件」，填入 `@nagi-ovo/dsh-ads`，然后重启 DSH。也可以运行 `dsh plugin --profile desktop add @nagi-ovo/dsh-ads`。
+
+**Web**：用 npm 装到 `web` profile：
 
 ```sh
 dsh plugin --profile web add @nagi-ovo/dsh-ads
