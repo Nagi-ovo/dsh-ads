@@ -43,6 +43,7 @@ const POPUP_META = {
   'pop-token': { alt: 'DSH无限Token破解版 永久免费 免登录 过检测' },
   'pop-v4pro': { alt: '免费领 V4 Pro 正式版抢先体验 名额有限' },
   'pop-whale-quant': { alt: '鲸鱼量化 年化率保证50% 稳赚不赔 已有88万 Vibe Coder 上车' },
+  'pop-whale-a03': { alt: '恭喜被附近的大肥鱼选中，200K 上下文，本地极速响应' },
 }
 
 /** Inline rewarded-ad artwork: exact copy stays in HTML for legibility. */
