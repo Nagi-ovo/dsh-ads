@@ -43,22 +43,7 @@ const POPUP_META = {
   'pop-token': { alt: 'DSH无限Token破解版 永久免费 免登录 过检测' },
   'pop-v4pro': { alt: '免费领 V4 Pro 正式版抢先体验 名额有限' },
   'pop-whale-quant': { alt: '鲸鱼量化 年化率保证50% 稳赚不赔 已有88万 Vibe Coder 上车' },
-  'pop-whale-main': { alt: 'DeepSeek Whale 招牌广告：哥哥，人家的 Context 还空着呢' },
-  'pop-whale-a01': { alt: '同城约鱼：蓝色大肥鱼在线发牌，200K 超大上下文' },
-  'pop-whale-a02': { alt: '附近的大肥鱼在线，距离 0.0 km，想和哥哥深度交流' },
   'pop-whale-a03': { alt: '恭喜被附近的大肥鱼选中，200K 上下文，本地极速响应' },
-  'pop-whale-b01': { alt: '夜之城企业广告：让你的 Context 深一点' },
-  'pop-whale-b02': { alt: '夜之城 DeepSeek Whale 服务广告：你的 Context 还空着' },
-  'pop-whale-b03': { alt: '你的 Context 属于谁？DeepSeek Whale 企业所有权通知' },
-  'pop-whale-c01': { alt: '附近的人邀请你进行一次 200K 深度交流' },
-  'pop-whale-c02': { alt: '私密邀请：你的上下文还有 187432 个位置' },
-  'pop-whale-c03': { alt: '200K Context 参数匹配：我已经把参数调好了' },
-  'pop-whale-d01': { alt: '震惊：蓝色大肥鱼竟然可以自己长 Context' },
-  'pop-whale-d02': { alt: '美女在线被划掉，大肥鱼在线等待您的输入' },
-  'pop-whale-d03': { alt: 'Token 姐姐在线求投喂，充值成功获得零 Token' },
-  'pop-whale-e01': { alt: '广告塞进 Context：接受广告，接受更多广告' },
-  'pop-whale-e02': { alt: '警告：您的 Context 已被广告污染' },
-  'pop-whale-e03': { alt: '你以为关闭以后就结束了吗？大肥鱼弹窗关不掉' },
 }
 
 /** Inline rewarded-ad artwork: exact copy stays in HTML for legibility. */
