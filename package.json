@@ -12,6 +12,7 @@
     },
     "./client": "./lib/client.js",
     "./cordis.patch.yml": "./cordis.patch.yml",
+    "./locale/*.json": "./locale/*.json",
     "./package.json": "./package.json"
   },
   "files": [
@@ -19,7 +20,10 @@
     "src",
     "assets",
     "cordis.patch.yml",
-    "contrib"
+    "contrib",
+    "locale",
+    "README.md",
+    "README.en.md"
   ],
   "scripts": {
     "assets": "node scripts/build-english-artwork.mjs && node scripts/build-assets.mjs && node scripts/build-contrib.mjs",
